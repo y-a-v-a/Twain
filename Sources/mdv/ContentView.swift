@@ -12,6 +12,7 @@ struct ContentView: View {
                 .textSelection(.enabled)
                 .padding(32)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .textual.structuredTextStyle(.gitHub)
         }
         .scrollContentBackground(.hidden)
         .frame(minWidth: 500, idealWidth: 720, minHeight: 400, idealHeight: 600)
