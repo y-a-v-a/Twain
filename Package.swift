@@ -1,20 +1,20 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.0
 
 import PackageDescription
 
 let package = Package(
     name: "mdv",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v15)
     ],
     dependencies: [
-        .package(url: "https://github.com/gonzalezreal/swift-markdown-ui", from: "2.4.0")
+        .package(url: "https://github.com/gonzalezreal/textual", from: "0.3.1")
     ],
     targets: [
         .executableTarget(
             name: "mdv",
             dependencies: [
-                .product(name: "MarkdownUI", package: "swift-markdown-ui")
+                .product(name: "Textual", package: "textual")
             ],
             path: "Sources/mdv"
         )
