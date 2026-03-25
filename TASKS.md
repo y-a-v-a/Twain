@@ -15,6 +15,6 @@ A fast, read-only macOS desktop app for viewing `.md` files. No editing — just
 - [x] **Document model**: `MarkdownDocument` conforming to `FileDocument` — reads `.md`/`.markdown` files as plain text
 - [x] **Content view**: Scrollable view rendering Markdown via MarkdownUI `Markdown()` view, clean readable typography
 - [x] **File type registration**: UTType declaration for `.md` / `.markdown` so the app can be set as default handler
-- [ ] **Light/dark mode**: Ensure proper rendering in both appearances (largely free via SwiftUI, verify MarkdownUI theme)
+- [x] **Light/dark mode**: Ensure proper rendering in both appearances (largely free via SwiftUI, verify MarkdownUI theme)
 - [ ] **Build scripts**: `build.sh` (debug build), `release.sh` (release build), `run.sh` (build & open app), `clean.sh` (clean build artifacts)
 - [ ] **Build & test**: Verify the app launches fast, opens files, renders correctly, handles multiple windows
