@@ -9,13 +9,13 @@ struct ContentView: View {
         ScrollView {
             StructuredText(markdown: document.text)
                 .font(.system(size: CGFloat(fontSize)))
-                .textSelection(.enabled)
+                .textual.textSelection(.enabled)
                 .padding(32)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textual.structuredTextStyle(.gitHub)
         }
         .scrollContentBackground(.hidden)
-        .frame(minWidth: 500, idealWidth: 720, minHeight: 400, idealHeight: 600)
+        .frame(minWidth: 500, idealWidth: 720, minHeight: 600, idealHeight: 800)
         .background(Color(.textBackgroundColor))
         .focusedSceneValue(\.fontSize, $fontSize)
     }
