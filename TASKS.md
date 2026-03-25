@@ -10,7 +10,7 @@ A fast, read-only macOS desktop app for viewing `.md` files. No editing — just
 
 ## Tasks
 
-- [ ] **Project setup**: Create SPM-based macOS app package with `Package.swift`, add MarkdownUI dependency
+- [x] **Project setup**: Create SPM-based macOS app package with `Package.swift`, add MarkdownUI dependency
 - [ ] **App entry point**: `@main` App struct using `DocumentGroup` for multi-window `.md` file support (gives us Cmd+O, recent files, multiple windows for free)
 - [ ] **Document model**: `MarkdownDocument` conforming to `FileDocument` — reads `.md`/`.markdown` files as plain text
 - [ ] **Content view**: Scrollable view rendering Markdown via MarkdownUI `Markdown()` view, clean readable typography
