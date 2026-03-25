@@ -3,8 +3,8 @@ import SwiftUI
 @main
 struct mdvApp: App {
     var body: some Scene {
-        WindowGroup {
-            Text("mdv")
+        DocumentGroup(viewing: MarkdownDocument.self) { file in
+            ContentView(document: file.document)
         }
     }
 }
