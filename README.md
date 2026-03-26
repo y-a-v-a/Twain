@@ -1,4 +1,4 @@
-# mdv
+# Twain
 
 A fast, minimal Markdown viewer for macOS. Read-only — no editing, just rendering.
 
@@ -22,11 +22,11 @@ A fast, minimal Markdown viewer for macOS. Read-only — no editing, just render
 ./install.sh
 ```
 
-Installs `mdv.app` to `/Applications` and a CLI wrapper to `/usr/local/bin`, so you can run:
+Installs `Twain.app` to `/Applications` and a CLI wrapper to `/usr/local/bin`, so you can run:
 
 ```bash
-mdv file.md
-mdv a.md b.md   # opens each in its own window
+twain file.md
+twain a.md b.md   # opens each in its own window
 ```
 
 ## Keyboard Shortcuts

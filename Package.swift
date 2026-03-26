@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "mdv",
+    name: "Twain",
     platforms: [
         .macOS(.v15)
     ],
@@ -12,11 +12,11 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "mdv",
+            name: "Twain",
             dependencies: [
                 .product(name: "Textual", package: "textual")
             ],
-            path: "Sources/mdv"
+            path: "Sources/Twain"
         )
     ]
 )

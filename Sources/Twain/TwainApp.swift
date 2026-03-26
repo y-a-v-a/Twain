@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct mdvApp: App {
+struct TwainApp: App {
     var body: some Scene {
         DocumentGroup(viewing: MarkdownDocument.self) { file in
             ContentView(document: file.document)

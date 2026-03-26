@@ -3,25 +3,25 @@ set -euo pipefail
 
 ./release.sh
 
-APP_SOURCE=".build/release/mdv.app"
-APP_DEST="/Applications/mdv.app"
-CLI_DEST="/usr/local/bin/mdv"
+APP_SOURCE=".build/release/Twain.app"
+APP_DEST="/Applications/Twain.app"
+CLI_DEST="/usr/local/bin/twain"
 
-echo "Installing mdv.app to /Applications..."
+echo "Installing Twain.app to /Applications..."
 rm -rf "$APP_DEST"
 cp -R "$APP_SOURCE" "$APP_DEST"
 
-echo "Installing CLI to /usr/local/bin/mdv..."
+echo "Installing CLI to /usr/local/bin/twain..."
 cat > "$CLI_DEST" << 'SCRIPT'
 #!/bin/bash
 if [ $# -eq 0 ]; then
-    open -a mdv
+    open -a Twain
 else
     for f in "$@"; do
-        open -a mdv "$(cd "$(dirname "$f")" && pwd)/$(basename "$f")"
+        open -a Twain "$(cd "$(dirname "$f")" && pwd)/$(basename "$f")"
     done
 fi
 SCRIPT
 chmod +x "$CLI_DEST"
 
-echo "Done. Use: mdv path/to/file.md"
+echo "Done. Use: twain path/to/file.md"

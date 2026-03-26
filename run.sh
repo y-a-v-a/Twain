@@ -2,5 +2,5 @@
 set -euo pipefail
 
 ./build.sh
-echo "Opening mdv..."
-open .build/debug/mdv.app "$@"
+echo "Opening Twain..."
+open .build/debug/Twain.app "$@"
