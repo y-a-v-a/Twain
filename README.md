@@ -24,7 +24,7 @@ A fast, minimal Markdown viewer for macOS. Read-only — no editing, just render
 ./install.sh
 ```
 
-Installs `Twain.app` to `/Applications` and a CLI wrapper to `/usr/local/bin`, so you can run:
+Installs `Twain.app` to `~/Applications` and a CLI wrapper to `~/.bin`, so you can run:
 
 ```bash
 twain file.md
