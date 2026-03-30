@@ -1,19 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
-./release.sh
+./build.sh --release
 
 APP_SOURCE=".build/release/Twain.app"
 APP_DEST="$HOME/Applications/Twain.app"
-CLI_DEST="/usr/local/bin/twain"
+CLI_DEST="$HOME/.bin/twain"
 
 mkdir -p "$HOME/Applications"
 echo "Installing Twain.app to ~/Applications..."
 rm -rf "$APP_DEST"
 cp -R "$APP_SOURCE" "$APP_DEST"
 
-echo "Installing CLI to /usr/local/bin/twain..."
-cat > "$CLI_DEST" << 'SCRIPT'
+TMPFILE=$(mktemp)
+cat > "$TMPFILE" << 'SCRIPT'
 #!/bin/bash
 if [ $# -eq 0 ]; then
     open -a Twain
@@ -23,6 +23,11 @@ else
     done
 fi
 SCRIPT
-chmod +x "$CLI_DEST"
+
+echo "Installing CLI to ~/.bin/twain..."
+mkdir -p "$HOME/.bin"
+install -m 755 "$TMPFILE" "$CLI_DEST"
+rm -f "$TMPFILE"
+echo "CLI installed to $CLI_DEST"
 
 echo "Done. Use: twain path/to/file.md"
