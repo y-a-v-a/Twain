@@ -4,10 +4,11 @@ set -euo pipefail
 ./release.sh
 
 APP_SOURCE=".build/release/Twain.app"
-APP_DEST="/Applications/Twain.app"
+APP_DEST="$HOME/Applications/Twain.app"
 CLI_DEST="/usr/local/bin/twain"
 
-echo "Installing Twain.app to /Applications..."
+mkdir -p "$HOME/Applications"
+echo "Installing Twain.app to ~/Applications..."
 rm -rf "$APP_DEST"
 cp -R "$APP_SOURCE" "$APP_DEST"
 
