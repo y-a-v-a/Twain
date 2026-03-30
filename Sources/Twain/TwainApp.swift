@@ -8,29 +8,39 @@ struct TwainApp: App {
         }
         .commands {
             FontSizeCommands()
+            FontStyleCommands()
+        }
+    }
+}
+
+struct FontStyleCommands: Commands {
+    @AppStorage("useSerifFont") private var useSerifFont: Bool = false
+
+    var body: some Commands {
+        CommandGroup(after: .toolbar) {
+            Toggle("Serif Font", isOn: $useSerifFont)
+                .keyboardShortcut("f", modifiers: [.command, .shift])
         }
     }
 }
 
 struct FontSizeCommands: Commands {
-    @FocusedValue(\.fontSize) private var fontSize
+    @AppStorage("fontSize") private var fontSize: Double = 16
 
     var body: some Commands {
         CommandGroup(after: .toolbar) {
             Button("Increase Font Size") {
-                guard let fontSize else { return }
-                fontSize.wrappedValue = min(fontSize.wrappedValue + 2, 40)
+                fontSize = min(fontSize + 2, 40)
             }
             .keyboardShortcut("+", modifiers: .command)
 
             Button("Decrease Font Size") {
-                guard let fontSize else { return }
-                fontSize.wrappedValue = max(fontSize.wrappedValue - 2, 10)
+                fontSize = max(fontSize - 2, 10)
             }
             .keyboardShortcut("-", modifiers: .command)
 
             Button("Reset Font Size") {
-                fontSize?.wrappedValue = 16
+                fontSize = 16
             }
             .keyboardShortcut("0", modifiers: .command)
         }
