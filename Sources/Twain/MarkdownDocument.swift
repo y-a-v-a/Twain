@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension UTType {
-    static let markdown = UTType("net.daringfireball.markdown")!
+    static let markdown = UTType(importedAs: "net.daringfireball.markdown")
 }
 
 struct MarkdownDocument: FileDocument {
