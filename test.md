@@ -19,6 +19,8 @@ struct ContentView: View {
 }
 ```
 
+***
+
 ## Table
 
 | Feature | Status |
@@ -30,6 +32,14 @@ struct ContentView: View {
 ## Blockquote
 
 > This is a blockquote to verify styling.
+
+### Heading 3
+
+#### Heading 4
+
+##### Heading 5
+
+###### Heading 6
 
 ---
 

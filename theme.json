@@ -1,0 +1,30 @@
+{
+  "colors": {
+    "primary": { "light": "#060606", "dark": "#fbfbfc" },
+    "secondary": { "light": "#6b6e7b", "dark": "#9294a0" },
+    "tertiary": { "light": "#6b6e7b", "dark": "#6d707d" },
+    "background": { "light": "#ffffff", "dark": "#18191d" },
+    "secondaryBackground": { "light": "#f7f7f9", "dark": "#25262a" },
+    "link": { "light": "#2c65cf", "dark": "#4c8ef8" },
+    "border": { "light": "#e4e4e8", "dark": "#42444e" },
+    "divider": { "light": "#d0d0d3", "dark": "#333438" }
+  },
+  "headings": {
+    "fontScales": [2.0, 1.5, 1.25, 1.0, 0.875, 0.85],
+    "fontWeight": "semibold"
+  },
+  "codeBlock": {
+    "background": { "light": "#f5f5f8", "dark": "#1f1f24" },
+    "cornerRadius": 6,
+    "padding": 16,
+    "fontScale": 0.85
+  },
+  "blockQuote": {
+    "borderColor": { "light": "#e4e4e8", "dark": "#42444e" },
+    "borderWidth": 0.2
+  },
+  "paragraph": {
+    "lineSpacingScale": 0.25,
+    "bottomSpacing": 16
+  }
+}

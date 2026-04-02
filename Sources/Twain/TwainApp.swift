@@ -2,9 +2,11 @@ import SwiftUI
 
 @main
 struct TwainApp: App {
+    private let theme = Theme.load()
+
     var body: some Scene {
         DocumentGroup(viewing: MarkdownDocument.self) { file in
-            ContentView(document: file.document)
+            ContentView(document: file.document, theme: theme)
         }
         .commands {
             FontSizeCommands()

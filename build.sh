@@ -47,5 +47,5 @@ echo "Built: $APP_BUNDLE"
 
 if [ $RUN -eq 1 ]; then
     echo "Opening Twain..."
-    open "$APP_BUNDLE"
+    open -a "$(pwd)/$APP_BUNDLE" test.md
 fi

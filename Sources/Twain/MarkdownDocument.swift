@@ -15,12 +15,11 @@ struct MarkdownDocument: FileDocument {
     }
 
     init(configuration: ReadConfiguration) throws {
-        guard let data = configuration.file.regularFileContents else {
-            throw CocoaError(.fileReadCorruptFile)
-        }
-        var usedEncoding: String.Encoding = .utf8
-        let nsString = NSString(data: data, usedEncoding: &usedEncoding)
-        guard let string = nsString as String? else {
+        guard let data = configuration.file.regularFileContents,
+              let string = String(data: data, encoding: .utf8)
+                  ?? String(data: data, encoding: .utf16)
+                  ?? String(data: data, encoding: .isoLatin1)
+        else {
             throw CocoaError(.fileReadCorruptFile)
         }
         self.text = string
