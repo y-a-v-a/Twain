@@ -39,6 +39,7 @@ twain a.md b.md   # opens each in its own window
 | Cmd++ | Increase font size |
 | Cmd+- | Decrease font size |
 | Cmd+0 | Reset font size |
+| Cmd+R | Refresh file from disk |
 | Cmd+Shift+F | Toggle serif font |
 
 Font size and font style preferences are saved and restored across app restarts.

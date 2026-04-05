@@ -3,13 +3,15 @@ import Textual
 
 struct ContentView: View {
     let document: MarkdownDocument
+    let fileURL: URL?
     let theme: Theme
     @AppStorage("fontSize") private var fontSize: Double = 16
     @AppStorage("useSerifFont") private var useSerifFont: Bool = false
+    @State private var text: String = ""
 
     var body: some View {
         ScrollView {
-            StructuredText(markdown: document.text)
+            StructuredText(markdown: text)
                 .font(.system(size: fontSize))
                 .fontDesign(useSerifFont ? .serif : .default)
                 .textual.textSelection(.enabled)
@@ -22,5 +24,15 @@ struct ContentView: View {
         .scrollContentBackground(.hidden)
         .frame(minWidth: 500, idealWidth: 720, minHeight: 600, idealHeight: 800)
         .background(theme.colors.background.dynamicColor)
+        .onAppear { text = document.text }
+        .focusedValue(\.refresh, {
+            guard let url = fileURL,
+                  let data = try? Data(contentsOf: url),
+                  let string = String(data: data, encoding: .utf8)
+                      ?? String(data: data, encoding: .utf16)
+                      ?? String(data: data, encoding: .isoLatin1)
+            else { return }
+            text = string
+        })
     }
 }
