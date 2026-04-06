@@ -9,11 +9,19 @@ struct ContentView: View {
     @AppStorage("useSerifFont") private var useSerifFont: Bool = false
     @State private var text: String = ""
 
+    private var font: Font {
+        let family = useSerifFont ? theme.serifFontFamily : theme.sansSerifFontFamily
+        if let family {
+            return .custom(family, size: fontSize)
+        }
+        return .system(size: fontSize)
+    }
+
     var body: some View {
         ScrollView {
             StructuredText(markdown: text)
-                .font(.system(size: fontSize))
-                .fontDesign(useSerifFont ? .serif : .default)
+                .font(font)
+                .fontDesign(useSerifFont && theme.serifFontFamily == nil ? .serif : .default)
                 .textual.textSelection(.enabled)
                 .textual.highlighterTheme(theme.highlighterTheme)
                 .padding(32)

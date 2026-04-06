@@ -16,6 +16,8 @@ struct Theme: Codable {
     var codeBlock: ThemeCodeBlock
     var blockQuote: ThemeBlockQuote
     var paragraph: ThemeParagraph
+    var serifFontFamily: String?
+    var sansSerifFontFamily: String?
 
     struct ThemeColors: Codable {
         var primary: ThemeColor
