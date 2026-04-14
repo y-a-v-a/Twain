@@ -7,7 +7,19 @@ struct ContentView: View {
     let theme: Theme
     @AppStorage("fontSize") private var fontSize: Double = 16
     @AppStorage("useSerifFont") private var useSerifFont: Bool = false
-    @State private var text: String = ""
+    @State private var text: String
+    @State private var isSearching: Bool = false
+    @State private var searchState: SearchState
+    @State private var searchCache: HighlightingMarkdownCache
+
+    init(document: MarkdownDocument, fileURL: URL?, theme: Theme) {
+        self.document = document
+        self.fileURL = fileURL
+        self.theme = theme
+        _text = State(initialValue: document.text)
+        _searchState = State(initialValue: SearchState())
+        _searchCache = State(initialValue: HighlightingMarkdownCache())
+    }
 
     private var font: Font {
         let family = useSerifFont ? theme.serifFontFamily : theme.sansSerifFontFamily
@@ -17,22 +29,70 @@ struct ContentView: View {
         return .system(size: fontSize)
     }
 
+    /// Markup string passed to StructuredText. When searching, a trigger suffix is appended
+    /// so that changes to the query or current match index cause StructuredText's
+    /// `onChange(of: markup)` to fire and re‑parse **in place** — no view destruction needed.
+    private var displayText: String {
+        guard isSearching, !searchState.query.isEmpty else { return text }
+        let sep = HighlightingMarkdownParser.separator
+        return text + "\(sep)\(searchState.renderRevision)"
+    }
+
+    private var parser: HighlightingMarkdownParser {
+        HighlightingMarkdownParser(
+            matches: isSearching ? searchState.matches : [],
+            currentMatchIndex: searchState.currentMatchIndex
+        )
+    }
+
     var body: some View {
-        ScrollView {
-            StructuredText(markdown: text)
-                .font(font)
-                .fontDesign(useSerifFont && theme.serifFontFamily == nil ? .serif : .default)
-                .textual.textSelection(.enabled)
-                .textual.highlighterTheme(theme.highlighterTheme)
-                .padding(32)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .textual.structuredTextStyle(ThemedStructuredTextStyle(theme: theme))
+        ScrollViewReader { proxy in
+            ZStack(alignment: .top) {
+                ScrollView {
+                    StructuredText(
+                        displayText,
+                        parser: parser
+                    )
+                    .id("content")
+                    .font(font)
+                    .fontDesign(useSerifFont && theme.serifFontFamily == nil ? .serif : .default)
+                    .textual.textSelection(.enabled)
+                    .textual.highlighterTheme(theme.highlighterTheme)
+                    .padding(32)
+                    .padding(.top, isSearching ? 36 : 0)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textual.structuredTextStyle(ThemedStructuredTextStyle(theme: theme))
+                }
+
+                if isSearching {
+                    SearchBar(
+                        searchState: searchState,
+                        onDismiss: { dismissSearch() }
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .animation(.easeInOut(duration: 0.15), value: isSearching)
+            .onChange(of: searchState.scrollTarget) {
+                guard isSearching, searchState.hasMatches else { return }
+                scrollToMatch(proxy: proxy)
+            }
+            .focusedValue(\.findNext, {
+                guard isSearching else { return }
+                searchState.nextMatch()
+            })
+            .focusedValue(\.findPrevious, {
+                guard isSearching else { return }
+                searchState.previousMatch()
+            })
         }
         .foregroundStyle(theme.colors.primary.dynamicColor)
         .scrollContentBackground(.hidden)
         .frame(minWidth: 500, idealWidth: 720, minHeight: 600, idealHeight: 800)
         .background(theme.colors.background.dynamicColor)
-        .onAppear { text = document.text }
+        .onChange(of: text, initial: true) {
+            searchState.updateDocument(markdown: text, using: searchCache)
+        }
         .focusedValue(\.refresh, {
             guard let url = fileURL,
                   let data = try? Data(contentsOf: url),
@@ -42,5 +102,18 @@ struct ContentView: View {
             else { return }
             text = string
         })
+        .focusedValue(\.find, { isSearching = true })
+    }
+
+    private func dismissSearch() {
+        isSearching = false
+        searchState.reset()
+    }
+
+    private func scrollToMatch(proxy: ScrollViewProxy) {
+        guard let fraction = searchState.currentMatchFraction else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            proxy.scrollTo("content", anchor: UnitPoint(x: 0, y: fraction))
+        }
     }
 }

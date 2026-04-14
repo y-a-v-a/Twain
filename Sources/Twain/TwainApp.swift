@@ -4,10 +4,37 @@ private struct RefreshActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+private struct FindActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
+private struct FindNextActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
+private struct FindPreviousActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
 extension FocusedValues {
     var refresh: (() -> Void)? {
         get { self[RefreshActionKey.self] }
         set { self[RefreshActionKey.self] = newValue }
+    }
+
+    var find: (() -> Void)? {
+        get { self[FindActionKey.self] }
+        set { self[FindActionKey.self] = newValue }
+    }
+
+    var findNext: (() -> Void)? {
+        get { self[FindNextActionKey.self] }
+        set { self[FindNextActionKey.self] = newValue }
+    }
+
+    var findPrevious: (() -> Void)? {
+        get { self[FindPreviousActionKey.self] }
+        set { self[FindPreviousActionKey.self] = newValue }
     }
 }
 
@@ -21,6 +48,7 @@ struct TwainApp: App {
         }
         .commands {
             RefreshCommands()
+            FindCommands()
             FontSizeCommands()
             FontStyleCommands()
         }
@@ -37,6 +65,34 @@ struct RefreshCommands: Commands {
             }
             .keyboardShortcut("r", modifiers: .command)
             .disabled(refresh == nil)
+        }
+    }
+}
+
+struct FindCommands: Commands {
+    @FocusedValue(\.find) private var find
+    @FocusedValue(\.findNext) private var findNext
+    @FocusedValue(\.findPrevious) private var findPrevious
+
+    var body: some Commands {
+        CommandGroup(after: .textEditing) {
+            Button("Find…") {
+                find?()
+            }
+            .keyboardShortcut("f", modifiers: .command)
+            .disabled(find == nil)
+
+            Button("Find Next") {
+                findNext?()
+            }
+            .keyboardShortcut("g", modifiers: .command)
+            .disabled(findNext == nil)
+
+            Button("Find Previous") {
+                findPrevious?()
+            }
+            .keyboardShortcut("g", modifiers: [.command, .shift])
+            .disabled(findPrevious == nil)
         }
     }
 }
