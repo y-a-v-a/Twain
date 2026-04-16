@@ -86,8 +86,12 @@ private struct RenderedBlock {
         case .explicitLines(let lineStartOffsets):
             guard !lineStartOffsets.isEmpty else { return 0 }
 
-            let lineIndex = lineStartOffsets.lastIndex(where: { $0 <= localOffset }) ?? 0
-            return (CGFloat(lineIndex) + 0.5) / CGFloat(max(lineStartOffsets.count, 1))
+            let lineIndex = CGFloat(lineStartOffsets.lastIndex(where: { $0 <= localOffset }) ?? 0)
+            let lineCount = CGFloat(lineStartOffsets.count)
+            let overhead: CGFloat = 1.6
+            let totalUnits = max(3.0, lineCount + overhead)
+            let topPadding = (totalUnits - lineCount) / 2
+            return (topPadding + lineIndex + 0.5) / totalUnits
         }
     }
 }
