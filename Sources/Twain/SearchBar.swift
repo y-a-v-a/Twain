@@ -70,29 +70,35 @@ private struct RenderedBlock {
     }
 
     let range: Range<Int>
-    let weight: CGFloat
+    let topSurround: CGFloat
+    let contentHeight: CGFloat
+    let bottomSurround: CGFloat
     let layoutModel: LayoutModel
+
+    var weight: CGFloat { topSurround + contentHeight + bottomSurround }
 
     func contains(_ offset: Int) -> Bool {
         range.contains(offset)
     }
 
     func localFraction(for offset: Int) -> CGFloat {
+        guard weight > 0 else { return 0 }
         let localOffset = max(0, min(offset - range.lowerBound, max(range.count - 1, 0)))
 
-        switch layoutModel {
-        case .character:
-            return CGFloat(localOffset) / CGFloat(max(range.count, 1))
-        case .explicitLines(let lineStartOffsets):
-            guard !lineStartOffsets.isEmpty else { return 0 }
+        let positionWithinContent: CGFloat = {
+            switch layoutModel {
+            case .character:
+                let denom = CGFloat(max(range.count, 1))
+                return contentHeight * CGFloat(localOffset) / denom
+            case .explicitLines(let lineStartOffsets):
+                guard !lineStartOffsets.isEmpty else { return 0 }
+                let lineIndex = CGFloat(lineStartOffsets.lastIndex(where: { $0 <= localOffset }) ?? 0)
+                let lineCount = CGFloat(lineStartOffsets.count)
+                return contentHeight * (lineIndex + 0.5) / lineCount
+            }
+        }()
 
-            let lineIndex = CGFloat(lineStartOffsets.lastIndex(where: { $0 <= localOffset }) ?? 0)
-            let lineCount = CGFloat(lineStartOffsets.count)
-            let overhead: CGFloat = 1.6
-            let totalUnits = max(3.0, lineCount + overhead)
-            let topPadding = (totalUnits - lineCount) / 2
-            return (topPadding + lineIndex + 0.5) / totalUnits
-        }
+        return (topSurround + positionWithinContent) / weight
     }
 }
 
@@ -107,6 +113,12 @@ final class SearchState {
     private var blocks: [RenderedBlock] = []
     private var documentRevision: Int = 0
     private(set) var renderRevision: Int = 0
+
+    private let layout: BlockLayoutMetrics
+
+    init(layout: BlockLayoutMetrics) {
+        self.layout = layout
+    }
 
     var matchCount: Int { matches.count }
     var hasMatches: Bool { !matches.isEmpty }
@@ -123,7 +135,7 @@ final class SearchState {
         do {
             try cache.prepare(markdown: markdown)
             renderedText = cache.plainText
-            blocks = Self.makeBlocks(from: cache.attributedString)
+            blocks = Self.makeBlocks(from: cache.attributedString, layout: layout)
             documentRevision += 1
             rebuildMatches(resetSelection: false)
             renderRevision += 1
@@ -231,7 +243,10 @@ final class SearchState {
         return found
     }
 
-    private static func makeBlocks(from attributedString: AttributedString) -> [RenderedBlock] {
+    private static func makeBlocks(
+        from attributedString: AttributedString,
+        layout: BlockLayoutMetrics
+    ) -> [RenderedBlock] {
         let runs = topLevelBlockRuns(in: attributedString)
 
         let blocks = runs.compactMap { run -> RenderedBlock? in
@@ -247,22 +262,24 @@ final class SearchState {
             guard upperBound > lowerBound else { return nil }
 
             let blockText = String(attributedString[run.range].characters)
-            let range = lowerBound..<upperBound
-            let layoutModel = makeLayoutModel(for: blockText, intent: run.intent)
-            return RenderedBlock(
-                range: range,
-                weight: estimatedWeight(for: blockText, intent: run.intent),
-                layoutModel: layoutModel
+            return makeRenderedBlock(
+                range: lowerBound..<upperBound,
+                text: blockText,
+                intent: run.intent,
+                tableRowCount: run.tableRowCount,
+                layout: layout
             )
         }
 
         if blocks.isEmpty, !attributedString.characters.isEmpty {
             let text = String(attributedString.characters)
             return [
-                RenderedBlock(
+                makeRenderedBlock(
                     range: 0..<text.count,
-                    weight: estimatedLineUnits(for: text),
-                    layoutModel: .character
+                    text: text,
+                    intent: nil,
+                    tableRowCount: 0,
+                    layout: layout
                 )
             ]
         }
@@ -284,45 +301,88 @@ final class SearchState {
         return blocks.startIndex
     }
 
-    private static func estimatedWeight(
-        for text: String,
-        intent: PresentationIntent.IntentType?
-    ) -> CGFloat {
-        let lineUnits = estimatedLineUnits(for: text)
-        let explicitLineUnits = explicitLineUnits(for: text)
+    private static func makeRenderedBlock(
+        range: Range<Int>,
+        text: String,
+        intent: PresentationIntent.IntentType?,
+        tableRowCount: Int,
+        layout: BlockLayoutMetrics
+    ) -> RenderedBlock {
+        let pt = layout.pointsPerLineUnit
 
         switch intent?.kind {
         case .header(let level):
-            let headerBase = max(1.2, 2.4 - (CGFloat(level) * 0.2))
-            return max(headerBase, (lineUnits * 0.75) + headerBase)
+            let scales = layout.headingScales
+            let clamped = max(1, min(level, max(scales.count, 1)))
+            let scale = scales.isEmpty ? 1.0 : scales[clamped - 1]
+            let dividerExtra: CGFloat = (level <= layout.headingDividerMaxLevel)
+                ? (layout.headingDividerGap + layout.headingDividerThickness)
+                : 0
+            return RenderedBlock(
+                range: range,
+                topSurround: layout.headingTopSpacing / pt,
+                contentHeight: estimatedLineUnits(for: text) * scale,
+                bottomSurround: (layout.headingBottomSpacing + dividerExtra) / pt,
+                layoutModel: .character
+            )
         case .codeBlock:
-            return max(3.0, explicitLineUnits + 1.6)
+            let offsets = lineStartOffsets(for: text)
+            let lineCount = CGFloat(max(offsets.count, 1))
+            return RenderedBlock(
+                range: range,
+                topSurround: layout.codeBlockPadding / pt,
+                contentHeight: lineCount * layout.codeBlockFontScale,
+                bottomSurround: (layout.codeBlockPadding + layout.codeBlockBottomSpacing) / pt,
+                layoutModel: .explicitLines(lineStartOffsets: offsets)
+            )
         case .table:
-            return max(3.0, (lineUnits * 1.1) + 1.0)
-        case .tableHeaderRow, .tableRow, .tableCell:
-            return max(1.0, lineUnits)
-        case .blockQuote:
-            return max(1.5, (lineUnits * 1.05) + 0.4)
-        case .orderedList, .unorderedList, .listItem:
-            return max(1.2, lineUnits + 0.2)
+            // Row-based: one content line + cell vertical padding + row divider, per row.
+            // Character-based fallback (72-chars-per-line) doesn't apply — cells are 2D, not flowing.
+            let rows = CGFloat(max(tableRowCount, 1))
+            let perRowPoints = pt
+                + (2 * layout.tableCellVerticalPadding)
+                + layout.tableCellSpacing
+            let frame = layout.tableInnerPadding + layout.tableOuterBorderWidth
+            return RenderedBlock(
+                range: range,
+                topSurround: frame / pt,
+                contentHeight: rows * perRowPoints / pt,
+                bottomSurround: (frame + layout.tableBottomSpacing) / pt,
+                layoutModel: .character
+            )
         case .thematicBreak:
-            return 0.8
+            return RenderedBlock(
+                range: range,
+                topSurround: layout.thematicBreakTopSpacing / pt,
+                contentHeight: layout.thematicBreakRuleFontScale,
+                bottomSurround: layout.thematicBreakBottomSpacing / pt,
+                layoutModel: .character
+            )
         case .paragraph, nil:
-            return max(1.0, lineUnits)
+            return RenderedBlock(
+                range: range,
+                topSurround: 0,
+                contentHeight: estimatedLineUnits(for: text),
+                bottomSurround: layout.paragraphBottomSpacing / pt,
+                layoutModel: .character
+            )
+        case .blockQuote, .orderedList, .unorderedList, .listItem,
+             .tableHeaderRow, .tableRow, .tableCell:
+            return RenderedBlock(
+                range: range,
+                topSurround: 0,
+                contentHeight: estimatedLineUnits(for: text),
+                bottomSurround: 0,
+                layoutModel: .character
+            )
         @unknown default:
-            return max(1.0, lineUnits)
-        }
-    }
-
-    private static func makeLayoutModel(
-        for text: String,
-        intent: PresentationIntent.IntentType?
-    ) -> RenderedBlock.LayoutModel {
-        switch intent?.kind {
-        case .codeBlock:
-            return .explicitLines(lineStartOffsets: lineStartOffsets(for: text))
-        default:
-            return .character
+            return RenderedBlock(
+                range: range,
+                topSurround: 0,
+                contentHeight: estimatedLineUnits(for: text),
+                bottomSurround: 0,
+                layoutModel: .character
+            )
         }
     }
 
@@ -335,10 +395,6 @@ final class SearchState {
         }
 
         return CGFloat(max(wrappedLineCount, 1))
-    }
-
-    private static func explicitLineUnits(for text: String) -> CGFloat {
-        CGFloat(max(lineStartOffsets(for: text).count, 1))
     }
 
     private static func lineStartOffsets(for text: String) -> [Int] {
@@ -357,7 +413,11 @@ final class SearchState {
 
     private static func topLevelBlockRuns(
         in attributedString: AttributedString
-    ) -> [(intent: PresentationIntent.IntentType?, range: Range<AttributedString.Index>)] {
+    ) -> [(
+        intent: PresentationIntent.IntentType?,
+        range: Range<AttributedString.Index>,
+        tableRowCount: Int
+    )] {
         struct Boundary {
             let index: AttributedString.Runs.Index
             let intent: PresentationIntent.IntentType?
@@ -368,7 +428,15 @@ final class SearchState {
         var lastIntent: PresentationIntent.IntentType?
 
         for index in runs.indices {
-            let intent = runs[index].presentationIntent?.components.last
+            // Prefer the enclosing table (if any) over the innermost intent so that every
+            // cell of a table collapses into one block — otherwise each cell becomes its
+            // own vertically-stacked block and the table's height is wildly overcounted.
+            let components = runs[index].presentationIntent?.components
+            let tableIntent = components?.first { component in
+                if case .table = component.kind { return true }
+                return false
+            }
+            let intent = tableIntent ?? components?.last
 
             if boundaries.isEmpty || intent != lastIntent {
                 boundaries.append(Boundary(index: index, intent: intent))
@@ -385,7 +453,27 @@ final class SearchState {
             let lowerBound = runs[boundary.index].range.lowerBound
             let upperBound = runs[lastRunIndex].range.upperBound
 
-            return (boundary.intent, lowerBound..<upperBound)
+            var tableRowCount = 0
+            if case .table = boundary.intent?.kind {
+                var identities: Set<Int> = []
+                var cursor = boundary.index
+                while cursor < nextRunIndex {
+                    if let components = runs[cursor].presentationIntent?.components {
+                        for component in components {
+                            switch component.kind {
+                            case .tableHeaderRow, .tableRow:
+                                identities.insert(component.identity)
+                            default:
+                                break
+                            }
+                        }
+                    }
+                    cursor = runs.index(after: cursor)
+                }
+                tableRowCount = identities.count
+            }
+
+            return (boundary.intent, lowerBound..<upperBound, tableRowCount)
         }
     }
 }

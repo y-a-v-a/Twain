@@ -17,7 +17,7 @@ struct ContentView: View {
         self.fileURL = fileURL
         self.theme = theme
         _text = State(initialValue: document.text)
-        _searchState = State(initialValue: SearchState())
+        _searchState = State(initialValue: SearchState(layout: theme.blockLayout))
         _searchCache = State(initialValue: HighlightingMarkdownCache())
     }
 

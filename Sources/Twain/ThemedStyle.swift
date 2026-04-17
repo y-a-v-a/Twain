@@ -7,17 +7,17 @@ struct ThemedHeadingStyle: StructuredText.HeadingStyle {
     let theme: Theme
 
     func makeBody(configuration: Configuration) -> some View {
+        let layout = theme.blockLayout
         let level = max(1, min(configuration.headingLevel, 6))
-        let scales = theme.headings.fontScales
-        let fontScale = level <= scales.count ? scales[level - 1] : 1.0
+        let fontScale = level <= layout.headingScales.count ? layout.headingScales[level - 1] : 1.0
 
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: layout.headingDividerGap) {
             makeLabel(configuration: configuration)
                 .textual.fontScale(fontScale)
                 .textual.lineSpacing(.fontScaled(0.125))
-                .textual.blockSpacing(.init(top: 24, bottom: 16))
+                .textual.blockSpacing(.init(top: layout.headingTopSpacing, bottom: layout.headingBottomSpacing))
                 .fontWeight(theme.headings.weight)
-            if level <= 2 {
+            if level <= layout.headingDividerMaxLevel {
                 Divider()
                     .overlay(theme.colors.divider.dynamicColor)
             }
@@ -41,17 +41,18 @@ struct ThemedCodeBlockStyle: StructuredText.CodeBlockStyle {
     let theme: Theme
 
     func makeBody(configuration: Configuration) -> some View {
+        let layout = theme.blockLayout
         Overflow {
             configuration.label
                 .textual.lineSpacing(.fontScaled(0.225))
-                .textual.fontScale(theme.codeBlock.fontScale)
+                .textual.fontScale(layout.codeBlockFontScale)
                 .fixedSize(horizontal: false, vertical: true)
                 .monospaced()
-                .padding(theme.codeBlock.padding)
+                .padding(layout.codeBlockPadding)
         }
         .background(theme.codeBlock.background.dynamicColor)
         .clipShape(RoundedRectangle(cornerRadius: theme.codeBlock.cornerRadius))
-        .textual.blockSpacing(.init(top: 0, bottom: 16))
+        .textual.blockSpacing(.init(top: 0, bottom: layout.codeBlockBottomSpacing))
     }
 }
 
@@ -80,7 +81,7 @@ struct ThemedParagraphStyle: StructuredText.ParagraphStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .textual.lineSpacing(.fontScaled(theme.paragraph.lineSpacingScale))
-            .textual.blockSpacing(.init(top: 0, bottom: theme.paragraph.bottomSpacing))
+            .textual.blockSpacing(.init(top: 0, bottom: theme.blockLayout.paragraphBottomSpacing))
     }
 }
 
@@ -90,9 +91,10 @@ struct ThemedTableStyle: StructuredText.TableStyle {
     let theme: Theme
 
     func makeBody(configuration: Configuration) -> some View {
+        let metrics = theme.blockLayout
         configuration.label
-            .textual.tableCellSpacing(horizontal: 1, vertical: 1)
-            .textual.blockSpacing(.init(top: 0, bottom: 16))
+            .textual.tableCellSpacing(horizontal: metrics.tableCellSpacing, vertical: metrics.tableCellSpacing)
+            .textual.blockSpacing(.init(top: 0, bottom: metrics.tableBottomSpacing))
             .textual.tableBackground { layout in
                 Canvas { context, _ in
                     for bounds in layout.evenRowBounds {
@@ -113,8 +115,8 @@ struct ThemedTableStyle: StructuredText.TableStyle {
                     }
                 }
             }
-            .padding(1)
-            .border(theme.colors.border.dynamicColor, width: 1)
+            .padding(metrics.tableInnerPadding)
+            .border(theme.colors.border.dynamicColor, width: metrics.tableOuterBorderWidth)
     }
 }
 
@@ -135,7 +137,7 @@ struct ThemedTableCellStyle: StructuredText.TableCellStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .fontWeight(configuration.row == 0 ? .semibold : .regular)
-            .padding(.vertical, 6)
+            .padding(.vertical, theme.blockLayout.tableCellVerticalPadding)
             .padding(.horizontal, 13)
             .textual.lineSpacing(.fontScaled(0.25))
     }
@@ -147,10 +149,11 @@ struct ThemedThematicBreakStyle: StructuredText.ThematicBreakStyle {
     let theme: Theme
 
     func makeBody(configuration _: Configuration) -> some View {
+        let layout = theme.blockLayout
         Divider()
-            .textual.frame(height: .fontScaled(0.25))
+            .textual.frame(height: .fontScaled(layout.thematicBreakRuleFontScale))
             .overlay(theme.colors.border.dynamicColor)
-            .textual.blockSpacing(.init(top: 24, bottom: 24))
+            .textual.blockSpacing(.init(top: layout.thematicBreakTopSpacing, bottom: layout.thematicBreakBottomSpacing))
     }
 }
 
