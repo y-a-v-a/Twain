@@ -16,8 +16,11 @@ struct ContentView: View {
         self.document = document
         self.fileURL = fileURL
         self.theme = theme
+        let initialFontSize = UserDefaults.standard.object(forKey: "fontSize") as? Double ?? 16
         _text = State(initialValue: document.text)
-        _searchState = State(initialValue: SearchState(layout: theme.blockLayout))
+        _searchState = State(
+            initialValue: SearchState(layout: theme.blockLayout(fontSize: CGFloat(initialFontSize)))
+        )
         _searchCache = State(initialValue: HighlightingMarkdownCache())
     }
 
@@ -92,6 +95,13 @@ struct ContentView: View {
         .background(theme.colors.background.dynamicColor)
         .onChange(of: text, initial: true) {
             searchState.updateDocument(markdown: text, using: searchCache)
+        }
+        .onChange(of: fontSize, initial: true) {
+            searchState.updateLayout(
+                theme.blockLayout(fontSize: CGFloat(fontSize)),
+                markdown: text,
+                using: searchCache
+            )
         }
         .focusedValue(\.refresh, {
             guard let url = fileURL,

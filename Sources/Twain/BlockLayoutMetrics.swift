@@ -4,9 +4,12 @@ import SwiftUI
 /// scroll-position estimator (`SearchBar.swift`). Keeping them here prevents the
 /// estimator from drifting when a spacing tweak lands only on the render side.
 struct BlockLayoutMetrics {
+    /// Base font size used to derive point-based estimates for the current viewer zoom level.
+    var baseFontSize: CGFloat
+
     /// Approximate rendered height of one text line, in points. Used to convert
-    /// absolute spacings to the line-unit basis the estimator operates in. Not
-    /// font-size-aware: 20pt matches the default 16pt font with lineSpacingScale 0.25.
+    /// absolute spacings to the line-unit basis the estimator operates in.
+    /// Derived from the active font size and paragraph line-spacing scale.
     var pointsPerLineUnit: CGFloat
 
     var headingScales: [CGFloat]
@@ -24,6 +27,7 @@ struct BlockLayoutMetrics {
     var codeBlockPadding: CGFloat
     var codeBlockBottomSpacing: CGFloat
     var codeBlockFontScale: CGFloat
+    var codeBlockLineSpacingScale: CGFloat
 
     var tableBottomSpacing: CGFloat
     /// Inside the table, outside the cells (`.padding(1)` in `ThemedTableStyle`).
@@ -41,9 +45,13 @@ struct BlockLayoutMetrics {
 }
 
 extension Theme {
-    var blockLayout: BlockLayoutMetrics {
-        BlockLayoutMetrics(
-            pointsPerLineUnit: 20,
+    func blockLayout(fontSize: CGFloat) -> BlockLayoutMetrics {
+        let resolvedFontSize = max(fontSize, 1)
+        let pointsPerLineUnit = resolvedFontSize * (1 + paragraph.lineSpacingScale)
+
+        return BlockLayoutMetrics(
+            baseFontSize: resolvedFontSize,
+            pointsPerLineUnit: pointsPerLineUnit,
             headingScales: headings.fontScales,
             headingTopSpacing: 24,
             headingBottomSpacing: 16,
@@ -54,6 +62,7 @@ extension Theme {
             codeBlockPadding: codeBlock.padding,
             codeBlockBottomSpacing: 16,
             codeBlockFontScale: codeBlock.fontScale,
+            codeBlockLineSpacingScale: 0.225,
             tableBottomSpacing: 16,
             tableInnerPadding: 1,
             tableOuterBorderWidth: 1,

@@ -34,7 +34,16 @@ struct HighlightingMarkdownParser: MarkupParser {
 
         guard !matches.isEmpty else { return result }
 
+        // `matches` may be stale relative to `result` — e.g. cmd-R while searching re-renders
+        // with the new document before `SearchState` has re-run the query. Skip matches that
+        // don't fit inside the freshly parsed string rather than trapping on `offsetBy:`.
+        let charCount = result.characters.count
         for (index, match) in matches.enumerated() {
+            guard match.lowerBound >= 0,
+                  match.upperBound <= charCount,
+                  match.lowerBound < match.upperBound
+            else { continue }
+
             let lowerBound = result.characters.index(result.startIndex, offsetBy: match.lowerBound)
             let upperBound = result.characters.index(result.startIndex, offsetBy: match.upperBound)
             let isCurrent = index == currentMatchIndex
@@ -61,12 +70,14 @@ struct SearchScrollTarget: Equatable {
     let query: String
     let lowerBound: Int?
     let documentRevision: Int
+    let layoutRevision: Int
 }
 
 private struct RenderedBlock {
     enum LayoutModel {
         case character
         case explicitLines(lineStartOffsets: [Int])
+        case tableRows(rowRanges: [Range<Int>])
     }
 
     let range: Range<Int>
@@ -95,6 +106,19 @@ private struct RenderedBlock {
                 let lineIndex = CGFloat(lineStartOffsets.lastIndex(where: { $0 <= localOffset }) ?? 0)
                 let lineCount = CGFloat(lineStartOffsets.count)
                 return contentHeight * (lineIndex + 0.5) / lineCount
+            case .tableRows(let rowRanges):
+                guard !rowRanges.isEmpty else { return 0 }
+
+                let rowIndex =
+                    rowRanges.firstIndex(where: { $0.contains(offset) })
+                    ?? rowRanges.lastIndex(where: { $0.lowerBound <= offset })
+                    ?? rowRanges.startIndex
+                let row = rowRanges[rowIndex]
+                let rowLocalOffset = max(0, min(offset - row.lowerBound, max(row.count - 1, 0)))
+                let rowLocalFraction = CGFloat(rowLocalOffset) / CGFloat(max(row.count, 1))
+                let rowCount = CGFloat(rowRanges.count)
+
+                return contentHeight * (CGFloat(rowIndex) + 0.2 + (0.6 * rowLocalFraction)) / rowCount
             }
         }()
 
@@ -112,9 +136,10 @@ final class SearchState {
     private var renderedText: String = ""
     private var blocks: [RenderedBlock] = []
     private var documentRevision: Int = 0
+    private var layoutRevision: Int = 0
     private(set) var renderRevision: Int = 0
 
-    private let layout: BlockLayoutMetrics
+    private var layout: BlockLayoutMetrics
 
     init(layout: BlockLayoutMetrics) {
         self.layout = layout
@@ -127,8 +152,31 @@ final class SearchState {
         SearchScrollTarget(
             query: query,
             lowerBound: hasMatches ? matches[currentMatchIndex].lowerBound : nil,
-            documentRevision: documentRevision
+            documentRevision: documentRevision,
+            layoutRevision: layoutRevision
         )
+    }
+
+    func updateLayout(
+        _ layout: BlockLayoutMetrics,
+        markdown: String,
+        using cache: HighlightingMarkdownCache
+    ) {
+        self.layout = layout
+
+        do {
+            try cache.prepare(markdown: markdown)
+            renderedText = cache.plainText
+            blocks = Self.makeBlocks(from: cache.attributedString, layout: layout)
+            rebuildMatches(resetSelection: false)
+            layoutRevision += 1
+        } catch {
+            renderedText = ""
+            blocks = []
+            matches = []
+            currentMatchIndex = 0
+            layoutRevision += 1
+        }
     }
 
     func updateDocument(markdown: String, using cache: HighlightingMarkdownCache) {
@@ -266,7 +314,19 @@ final class SearchState {
                 range: lowerBound..<upperBound,
                 text: blockText,
                 intent: run.intent,
-                tableRowCount: run.tableRowCount,
+                tableRowRanges: run.tableRowRanges.compactMap { rowRange in
+                    let rowLowerBound = attributedString.characters.distance(
+                        from: attributedString.startIndex,
+                        to: rowRange.lowerBound
+                    )
+                    let rowUpperBound = attributedString.characters.distance(
+                        from: attributedString.startIndex,
+                        to: rowRange.upperBound
+                    )
+
+                    guard rowUpperBound > rowLowerBound else { return nil }
+                    return rowLowerBound..<rowUpperBound
+                },
                 layout: layout
             )
         }
@@ -278,7 +338,7 @@ final class SearchState {
                     range: 0..<text.count,
                     text: text,
                     intent: nil,
-                    tableRowCount: 0,
+                    tableRowRanges: [],
                     layout: layout
                 )
             ]
@@ -305,7 +365,7 @@ final class SearchState {
         range: Range<Int>,
         text: String,
         intent: PresentationIntent.IntentType?,
-        tableRowCount: Int,
+        tableRowRanges: [Range<Int>],
         layout: BlockLayoutMetrics
     ) -> RenderedBlock {
         let pt = layout.pointsPerLineUnit
@@ -328,17 +388,19 @@ final class SearchState {
         case .codeBlock:
             let offsets = lineStartOffsets(for: text)
             let lineCount = CGFloat(max(offsets.count, 1))
+            let codeBlockLineHeightPoints =
+                layout.baseFontSize * (layout.codeBlockFontScale + layout.codeBlockLineSpacingScale)
             return RenderedBlock(
                 range: range,
                 topSurround: layout.codeBlockPadding / pt,
-                contentHeight: lineCount * layout.codeBlockFontScale,
+                contentHeight: lineCount * (codeBlockLineHeightPoints / pt),
                 bottomSurround: (layout.codeBlockPadding + layout.codeBlockBottomSpacing) / pt,
                 layoutModel: .explicitLines(lineStartOffsets: offsets)
             )
         case .table:
             // Row-based: one content line + cell vertical padding + row divider, per row.
             // Character-based fallback (72-chars-per-line) doesn't apply — cells are 2D, not flowing.
-            let rows = CGFloat(max(tableRowCount, 1))
+            let rows = CGFloat(max(tableRowRanges.count, 1))
             let perRowPoints = pt
                 + (2 * layout.tableCellVerticalPadding)
                 + layout.tableCellSpacing
@@ -348,7 +410,7 @@ final class SearchState {
                 topSurround: frame / pt,
                 contentHeight: rows * perRowPoints / pt,
                 bottomSurround: (frame + layout.tableBottomSpacing) / pt,
-                layoutModel: .character
+                layoutModel: .tableRows(rowRanges: tableRowRanges)
             )
         case .thematicBreak:
             return RenderedBlock(
@@ -416,11 +478,17 @@ final class SearchState {
     ) -> [(
         intent: PresentationIntent.IntentType?,
         range: Range<AttributedString.Index>,
-        tableRowCount: Int
+        tableRowRanges: [Range<AttributedString.Index>]
     )] {
         struct Boundary {
             let index: AttributedString.Runs.Index
             let intent: PresentationIntent.IntentType?
+        }
+
+        struct TableRowBoundary {
+            let identity: Int
+            let lowerBound: AttributedString.Index
+            var upperBound: AttributedString.Index
         }
 
         let runs = attributedString.runs
@@ -453,27 +521,46 @@ final class SearchState {
             let lowerBound = runs[boundary.index].range.lowerBound
             let upperBound = runs[lastRunIndex].range.upperBound
 
-            var tableRowCount = 0
+            var tableRowBoundaries: [TableRowBoundary] = []
             if case .table = boundary.intent?.kind {
-                var identities: Set<Int> = []
+                var rowIndexByIdentity: [Int: Int] = [:]
                 var cursor = boundary.index
                 while cursor < nextRunIndex {
                     if let components = runs[cursor].presentationIntent?.components {
-                        for component in components {
+                        let rowComponent = components.first { component in
                             switch component.kind {
                             case .tableHeaderRow, .tableRow:
-                                identities.insert(component.identity)
+                                return true
                             default:
-                                break
+                                return false
+                            }
+                        }
+
+                        if let rowComponent {
+                            let runRange = runs[cursor].range
+                            if let existingIndex = rowIndexByIdentity[rowComponent.identity] {
+                                tableRowBoundaries[existingIndex].upperBound = runRange.upperBound
+                            } else {
+                                rowIndexByIdentity[rowComponent.identity] = tableRowBoundaries.count
+                                tableRowBoundaries.append(
+                                    TableRowBoundary(
+                                        identity: rowComponent.identity,
+                                        lowerBound: runRange.lowerBound,
+                                        upperBound: runRange.upperBound
+                                    )
+                                )
                             }
                         }
                     }
                     cursor = runs.index(after: cursor)
                 }
-                tableRowCount = identities.count
             }
 
-            return (boundary.intent, lowerBound..<upperBound, tableRowCount)
+            return (
+                boundary.intent,
+                lowerBound..<upperBound,
+                tableRowBoundaries.map { $0.lowerBound..<$0.upperBound }
+            )
         }
     }
 }
