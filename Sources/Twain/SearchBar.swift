@@ -601,13 +601,20 @@ struct SearchBar: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
                     .focused($isFieldFocused)
-                    .onSubmit {
-                        if NSApp.currentEvent?.modifierFlags.contains(.shift) == true {
-                            searchState.previousMatch()
-                        } else {
-                            searchState.nextMatch()
+                    .onKeyPress { keyPress -> KeyPress.Result in
+                        // Read the modifier from the delivered key event rather than
+                        // NSApp.currentEvent (global mutable state). Shift+Return goes backwards;
+                        // every other key (including a plain Return, left for onSubmit to advance)
+                        // is ignored so normal typing is unaffected.
+                        guard keyPress.key == .return,
+                              keyPress.modifiers.contains(.shift)
+                        else {
+                            return .ignored
                         }
+                        searchState.previousMatch()
+                        return .handled
                     }
+                    .onSubmit { searchState.nextMatch() }
 
                 if !searchState.query.isEmpty {
                     Text(matchLabel)
