@@ -45,6 +45,16 @@ struct BlockLayoutMetrics {
 }
 
 extension Theme {
+    /// Layout metrics for the render-side `StructuredText` styles in `ThemedStyle.swift`.
+    ///
+    /// Those styles read only the size-*independent* fields (spacing constants, font scales,
+    /// heading scales); the size-derived fields (`baseFontSize`, `pointsPerLineUnit`) are
+    /// irrelevant to them because SwiftUI applies the live font size through the environment.
+    /// Only the scroll estimator in `SearchBar.swift` needs the size-derived fields, and it calls
+    /// `blockLayout(fontSize:)` with the actual font size. The 16 here is therefore an arbitrary
+    /// placeholder, not the rendered size.
+    var styleLayout: BlockLayoutMetrics { blockLayout(fontSize: 16) }
+
     func blockLayout(fontSize: CGFloat) -> BlockLayoutMetrics {
         let resolvedFontSize = max(fontSize, 1)
         let pointsPerLineUnit = resolvedFontSize * (1 + paragraph.lineSpacingScale)
