@@ -42,10 +42,35 @@ struct BlockLayoutMetrics {
     var thematicBreakTopSpacing: CGFloat
     var thematicBreakBottomSpacing: CGFloat
     var thematicBreakRuleFontScale: CGFloat
+
+    /// Width available to wrapping text, in points. Zero when the viewport hasn't been measured
+    /// yet, in which case the estimator falls back to a fixed characters-per-line guess.
+    var contentWidth: CGFloat
+    /// Average glyph advance as a fraction of the font size, used to estimate where text wraps.
+    var averageCharacterWidthScale: CGFloat
+
+    /// Estimated number of characters that fit on one rendered line for text drawn at `fontScale`
+    /// times the base font size. Width-aware so the scroll estimate tracks the actual window
+    /// width and zoom instead of assuming a fixed line length.
+    func charactersPerLine(fontScale: CGFloat = 1) -> CGFloat {
+        guard contentWidth > 0 else { return 72 }
+        let glyphWidth = baseFontSize * fontScale * averageCharacterWidthScale
+        return max(contentWidth / max(glyphWidth, 1), 1)
+    }
 }
 
 extension Theme {
-    func blockLayout(fontSize: CGFloat) -> BlockLayoutMetrics {
+    /// Layout metrics for the render-side `StructuredText` styles in `ThemedStyle.swift`.
+    ///
+    /// Those styles read only the size-*independent* fields (spacing constants, font scales,
+    /// heading scales); the size-derived fields (`baseFontSize`, `pointsPerLineUnit`) are
+    /// irrelevant to them because SwiftUI applies the live font size through the environment.
+    /// Only the scroll estimator in `SearchBar.swift` needs the size-derived fields, and it calls
+    /// `blockLayout(fontSize:)` with the actual font size. The 16 here is therefore an arbitrary
+    /// placeholder, not the rendered size.
+    var styleLayout: BlockLayoutMetrics { blockLayout(fontSize: 16) }
+
+    func blockLayout(fontSize: CGFloat, contentWidth: CGFloat = 0) -> BlockLayoutMetrics {
         let resolvedFontSize = max(fontSize, 1)
         let pointsPerLineUnit = resolvedFontSize * (1 + paragraph.lineSpacingScale)
 
@@ -70,7 +95,9 @@ extension Theme {
             tableCellVerticalPadding: 6,
             thematicBreakTopSpacing: 24,
             thematicBreakBottomSpacing: 24,
-            thematicBreakRuleFontScale: 0.25
+            thematicBreakRuleFontScale: 0.25,
+            contentWidth: contentWidth,
+            averageCharacterWidthScale: 0.5
         )
     }
 }

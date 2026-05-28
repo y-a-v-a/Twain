@@ -22,15 +22,30 @@ final class HighlightingMarkdownCache {
 }
 
 struct HighlightingMarkdownParser: MarkupParser {
-    /// Private Use Area character used to separate real content from the search trigger suffix.
+    /// Private Use Area character appended (with the render revision) to the markup string handed
+    /// to `StructuredText`, purely so its `onChange(of: markup)` fires when the query or current
+    /// match changes. It is never parsed — see `attributedString(for:)`.
     static let separator: Character = "\u{E000}"
 
+    /// The real document markdown to render. Passed in directly rather than recovered from the
+    /// `input` string, so a document that legitimately contains `separator` (U+E000) is not
+    /// truncated at that character while searching.
+    let markdown: String
+
+    /// The shared parse cache. Highlights are overlaid on the *same* `AttributedString` that
+    /// `SearchState` derived its match offsets from, so the offsets are aligned by construction
+    /// rather than by coincidence of two parsers producing identical output. The cache also
+    /// short-circuits when the markdown is unchanged, so a query or current-match change repaints
+    /// without re-parsing the document.
+    let cache: HighlightingMarkdownCache
     let matches: [Range<Int>]
     let currentMatchIndex: Int
-    private let baseParser = AttributedStringMarkdownParser(baseURL: nil)
 
     func attributedString(for input: String) throws -> AttributedString {
-        var result = try baseParser.attributedString(for: Self.markdown(from: input))
+        // `input` carries the re-render trigger suffix and is intentionally ignored; we parse the
+        // real `markdown` instead.
+        try cache.prepare(markdown: markdown)
+        var result = cache.attributedString
 
         guard !matches.isEmpty else { return result }
 
@@ -53,14 +68,6 @@ struct HighlightingMarkdownParser: MarkupParser {
         }
 
         return result
-    }
-
-    static func markdown(from input: String) -> String {
-        guard let separatorIndex = input.firstIndex(of: separator) else {
-            return input
-        }
-
-        return String(input[..<separatorIndex])
     }
 }
 
@@ -128,7 +135,8 @@ private struct RenderedBlock {
 
 @MainActor @Observable
 final class SearchState {
-    var query: String = ""
+    /// Mutated only through `updateQuery` / `reset` so that `matches` always reflects `query`.
+    private(set) var query: String = ""
 
     private(set) var matches: [Range<Int>] = []
     private(set) var currentMatchIndex: Int = 0
@@ -243,8 +251,10 @@ final class SearchState {
         let localFraction = block.localFraction(for: matchOffset)
         let weightedFraction = (weightBefore + (localFraction * block.weight)) / totalWeight
 
-        // Bias slightly upward so the active hit lands below the search bar more often.
-        return min(max(weightedFraction - 0.03, 0), 1)
+        // Pure estimated position; the caller turns this into a scroll anchor using the measured
+        // content/viewport heights. (A fractional bias here is wrong: it shifts the match by a
+        // fraction of the *whole document*, which is huge on long documents.)
+        return min(max(weightedFraction, 0), 1)
     }
 
     private func rebuildMatches(resetSelection: Bool) {
@@ -276,7 +286,7 @@ final class SearchState {
         }
     }
 
-    private static func findMatches(of query: String, in text: String) -> [Range<Int>] {
+    static func findMatches(of query: String, in text: String) -> [Range<Int>] {
         var found: [Range<Int>] = []
         var searchRange = text.startIndex..<text.endIndex
 
@@ -381,7 +391,7 @@ final class SearchState {
             return RenderedBlock(
                 range: range,
                 topSurround: layout.headingTopSpacing / pt,
-                contentHeight: estimatedLineUnits(for: text) * scale,
+                contentHeight: estimatedLineUnits(for: text, charactersPerLine: layout.charactersPerLine(fontScale: scale)) * scale,
                 bottomSurround: (layout.headingBottomSpacing + dividerExtra) / pt,
                 layoutModel: .character
             )
@@ -424,7 +434,7 @@ final class SearchState {
             return RenderedBlock(
                 range: range,
                 topSurround: 0,
-                contentHeight: estimatedLineUnits(for: text),
+                contentHeight: estimatedLineUnits(for: text, charactersPerLine: layout.charactersPerLine()),
                 bottomSurround: layout.paragraphBottomSpacing / pt,
                 layoutModel: .character
             )
@@ -433,7 +443,7 @@ final class SearchState {
             return RenderedBlock(
                 range: range,
                 topSurround: 0,
-                contentHeight: estimatedLineUnits(for: text),
+                contentHeight: estimatedLineUnits(for: text, charactersPerLine: layout.charactersPerLine()),
                 bottomSurround: 0,
                 layoutModel: .character
             )
@@ -441,19 +451,23 @@ final class SearchState {
             return RenderedBlock(
                 range: range,
                 topSurround: 0,
-                contentHeight: estimatedLineUnits(for: text),
+                contentHeight: estimatedLineUnits(for: text, charactersPerLine: layout.charactersPerLine()),
                 bottomSurround: 0,
                 layoutModel: .character
             )
         }
     }
 
-    private static func estimatedLineUnits(for text: String) -> CGFloat {
-        let approximateCharactersPerLine = 72.0
+    private static func estimatedLineUnits(for text: String, charactersPerLine: CGFloat) -> CGFloat {
+        // Approximate the rendered line count by wrapping each hard line at `charactersPerLine`,
+        // which the layout derives from the measured content width and font size. This feeds the
+        // scroll-position estimate only, so the residual error is a small scroll offset, never a
+        // correctness issue. Glyph widths vary, so this is an average, not an exact wrap.
+        let perLine = Double(max(charactersPerLine, 1))
         let lines = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
 
         let wrappedLineCount = lines.reduce(into: 0) { total, line in
-            total += max(Int(ceil(Double(max(line.count, 1)) / approximateCharactersPerLine)), 1)
+            total += max(Int(ceil(Double(max(line.count, 1)) / perLine)), 1)
         }
 
         return CGFloat(max(wrappedLineCount, 1))
@@ -473,7 +487,7 @@ final class SearchState {
         return offsets
     }
 
-    private static func topLevelBlockRuns(
+    static func topLevelBlockRuns(
         in attributedString: AttributedString
     ) -> [(
         intent: PresentationIntent.IntentType?,
@@ -588,13 +602,20 @@ struct SearchBar: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
                     .focused($isFieldFocused)
-                    .onSubmit {
-                        if NSApp.currentEvent?.modifierFlags.contains(.shift) == true {
-                            searchState.previousMatch()
-                        } else {
-                            searchState.nextMatch()
+                    .onKeyPress { keyPress -> KeyPress.Result in
+                        // Read the modifier from the delivered key event rather than
+                        // NSApp.currentEvent (global mutable state). Shift+Return goes backwards;
+                        // every other key (including a plain Return, left for onSubmit to advance)
+                        // is ignored so normal typing is unaffected.
+                        guard keyPress.key == .return,
+                              keyPress.modifiers.contains(.shift)
+                        else {
+                            return .ignored
                         }
+                        searchState.previousMatch()
+                        return .handled
                     }
+                    .onSubmit { searchState.nextMatch() }
 
                 if !searchState.query.isEmpty {
                     Text(matchLabel)
@@ -639,6 +660,11 @@ struct SearchBar: View {
     }
 
     private var matchLabel: String {
+        // The count reflects `matches`; the highlighter skips any match that no longer fits the
+        // freshly parsed document (see HighlightingMarkdownParser). During the brief window after
+        // a cmd-R refresh while searching — new document parsed, query not yet re-run — the count
+        // here can momentarily exceed the highlights drawn. It self-corrects on the next render
+        // once SearchState re-runs the query against the new document.
         if searchState.matches.isEmpty {
             return "No matches"
         }

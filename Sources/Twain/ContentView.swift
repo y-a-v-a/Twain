@@ -11,6 +11,15 @@ struct ContentView: View {
     @State private var isSearching: Bool = false
     @State private var searchState: SearchState
     @State private var searchCache: HighlightingMarkdownCache
+    /// Measured size of the scroll viewport and the full scrollable content. Both feed the
+    /// search scroll-to so the active match is positioned by real pixels, not just an estimate.
+    @State private var viewportSize: CGSize = .zero
+    @State private var contentHeight: CGFloat = 0
+
+    /// Padding around the rendered content inside the scroll view. Mirrors the `.padding` modifiers
+    /// below; used to map the estimated text fraction onto the measured content height.
+    private static let contentInset: CGFloat = 32
+    private static let searchTopInset: CGFloat = 36
 
     init(document: MarkdownDocument, fileURL: URL?, theme: Theme) {
         self.document = document
@@ -43,6 +52,8 @@ struct ContentView: View {
 
     private var parser: HighlightingMarkdownParser {
         HighlightingMarkdownParser(
+            markdown: text,
+            cache: searchCache,
             matches: isSearching ? searchState.matches : [],
             currentMatchIndex: searchState.currentMatchIndex
         )
@@ -61,11 +72,13 @@ struct ContentView: View {
                     .fontDesign(useSerifFont && theme.serifFontFamily == nil ? .serif : .default)
                     .textual.textSelection(.enabled)
                     .textual.highlighterTheme(theme.highlighterTheme)
-                    .padding(32)
-                    .padding(.top, isSearching ? 36 : 0)
+                    .padding(Self.contentInset)
+                    .padding(.top, isSearching ? Self.searchTopInset : 0)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textual.structuredTextStyle(ThemedStructuredTextStyle(theme: theme))
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
                 }
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { viewportSize = $0 }
 
                 if isSearching {
                     SearchBar(
@@ -96,13 +109,8 @@ struct ContentView: View {
         .onChange(of: text, initial: true) {
             searchState.updateDocument(markdown: text, using: searchCache)
         }
-        .onChange(of: fontSize, initial: true) {
-            searchState.updateLayout(
-                theme.blockLayout(fontSize: CGFloat(fontSize)),
-                markdown: text,
-                using: searchCache
-            )
-        }
+        .onChange(of: fontSize, initial: true) { pushLayout() }
+        .onChange(of: viewportSize.width) { pushLayout() }
         .focusedValue(\.refresh, {
             guard let url = fileURL,
                   let data = try? Data(contentsOf: url),
@@ -120,10 +128,39 @@ struct ContentView: View {
         searchState.reset()
     }
 
+    private func pushLayout() {
+        let textWidth = max(viewportSize.width - 2 * Self.contentInset, 0)
+        searchState.updateLayout(
+            theme.blockLayout(fontSize: CGFloat(fontSize), contentWidth: textWidth),
+            markdown: text,
+            using: searchCache
+        )
+    }
+
     private func scrollToMatch(proxy: ScrollViewProxy) {
         guard let fraction = searchState.currentMatchFraction else { return }
+
+        let viewport = viewportSize.height
+        let content = contentHeight
+
+        // `scrollTo(anchor:)` aligns the content point at `anchor.y` with the same fraction of the
+        // viewport, so the on-screen error is the estimate error times (content - viewport). To keep
+        // that bounded we choose the anchor that lands the *measured* match position a little below
+        // the top (clearing the search bar), clamped so the ends of the document still scroll fully.
+        let anchorY: CGFloat
+        if content > viewport, viewport > 0 {
+            let topInset = Self.contentInset + (isSearching ? Self.searchTopInset : 0)
+            let textHeight = max(content - topInset - Self.contentInset, 1)
+            let matchY = topInset + fraction * textHeight
+
+            let targetWithinViewport: CGFloat = 0.3
+            anchorY = min(max((matchY - targetWithinViewport * viewport) / (content - viewport), 0), 1)
+        } else {
+            anchorY = fraction
+        }
+
         withAnimation(.easeInOut(duration: 0.2)) {
-            proxy.scrollTo("content", anchor: UnitPoint(x: 0, y: fraction))
+            proxy.scrollTo("content", anchor: UnitPoint(x: 0, y: anchorY))
         }
     }
 }
