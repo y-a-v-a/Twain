@@ -647,6 +647,11 @@ struct SearchBar: View {
     }
 
     private var matchLabel: String {
+        // The count reflects `matches`; the highlighter skips any match that no longer fits the
+        // freshly parsed document (see HighlightingMarkdownParser). During the brief window after
+        // a cmd-R refresh while searching — new document parsed, query not yet re-run — the count
+        // here can momentarily exceed the highlights drawn. It self-corrects on the next render
+        // once SearchState re-runs the query against the new document.
         if searchState.matches.isEmpty {
             return "No matches"
         }
