@@ -17,6 +17,11 @@ let package = Package(
                 .product(name: "Textual", package: "textual")
             ],
             path: "Sources/Twain"
+        ),
+        .testTarget(
+            name: "TwainTests",
+            dependencies: ["Twain"],
+            path: "Tests/TwainTests"
         )
     ]
 )

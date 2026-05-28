@@ -282,7 +282,7 @@ final class SearchState {
         }
     }
 
-    private static func findMatches(of query: String, in text: String) -> [Range<Int>] {
+    static func findMatches(of query: String, in text: String) -> [Range<Int>] {
         var found: [Range<Int>] = []
         var searchRange = text.startIndex..<text.endIndex
 
