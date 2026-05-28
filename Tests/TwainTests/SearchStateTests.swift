@@ -8,6 +8,10 @@ struct SearchStateTests {
         SearchState(layout: Theme.default.blockLayout(fontSize: 16))
     }
 
+    private func makeState(contentWidth: CGFloat) -> SearchState {
+        SearchState(layout: Theme.default.blockLayout(fontSize: 16, contentWidth: contentWidth))
+    }
+
     // MARK: - findMatches (pure)
 
     @Test func findsAllNonOverlappingMatches() {
@@ -211,5 +215,38 @@ struct SearchStateTests {
             return false
         }
         #expect(tableRuns.count == 1)
+    }
+
+    // MARK: - Width-aware wrap estimate
+
+    @Test func charactersPerLineTracksWidthAndFont() {
+        let narrow = Theme.default.blockLayout(fontSize: 16, contentWidth: 320)
+        let wide = Theme.default.blockLayout(fontSize: 16, contentWidth: 1280)
+        let bigFont = Theme.default.blockLayout(fontSize: 32, contentWidth: 1280)
+
+        #expect(wide.charactersPerLine() > narrow.charactersPerLine())   // wider fits more
+        #expect(bigFont.charactersPerLine() < wide.charactersPerLine())  // bigger glyphs fit fewer
+        // Unmeasured width falls back to the fixed estimate.
+        #expect(Theme.default.blockLayout(fontSize: 16).charactersPerLine() == 72)
+    }
+
+    @Test func wrapWidthShiftsTheEstimatedFraction() throws {
+        // A long single-line paragraph (which wraps differently by width) followed by a heading
+        // that holds the only match. Narrower content wraps the paragraph into more lines, inflating
+        // the weight before the heading and pushing the heading's estimated fraction higher.
+        let paragraph = String(repeating: "word ", count: 80)
+        let doc = paragraph + "\n\n# Tail heading foo"
+
+        let narrow = makeState(contentWidth: 320)
+        narrow.updateDocument(markdown: doc, using: HighlightingMarkdownCache())
+        narrow.updateQuery("foo")
+
+        let wide = makeState(contentWidth: 2000)
+        wide.updateDocument(markdown: doc, using: HighlightingMarkdownCache())
+        wide.updateQuery("foo")
+
+        let narrowFraction = try #require(narrow.currentMatchFraction)
+        let wideFraction = try #require(wide.currentMatchFraction)
+        #expect(narrowFraction > wideFraction)
     }
 }

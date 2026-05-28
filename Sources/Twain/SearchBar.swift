@@ -251,8 +251,10 @@ final class SearchState {
         let localFraction = block.localFraction(for: matchOffset)
         let weightedFraction = (weightBefore + (localFraction * block.weight)) / totalWeight
 
-        // Bias slightly upward so the active hit lands below the search bar more often.
-        return min(max(weightedFraction - 0.03, 0), 1)
+        // Pure estimated position; the caller turns this into a scroll anchor using the measured
+        // content/viewport heights. (A fractional bias here is wrong: it shifts the match by a
+        // fraction of the *whole document*, which is huge on long documents.)
+        return min(max(weightedFraction, 0), 1)
     }
 
     private func rebuildMatches(resetSelection: Bool) {
@@ -389,7 +391,7 @@ final class SearchState {
             return RenderedBlock(
                 range: range,
                 topSurround: layout.headingTopSpacing / pt,
-                contentHeight: estimatedLineUnits(for: text) * scale,
+                contentHeight: estimatedLineUnits(for: text, charactersPerLine: layout.charactersPerLine(fontScale: scale)) * scale,
                 bottomSurround: (layout.headingBottomSpacing + dividerExtra) / pt,
                 layoutModel: .character
             )
@@ -432,7 +434,7 @@ final class SearchState {
             return RenderedBlock(
                 range: range,
                 topSurround: 0,
-                contentHeight: estimatedLineUnits(for: text),
+                contentHeight: estimatedLineUnits(for: text, charactersPerLine: layout.charactersPerLine()),
                 bottomSurround: layout.paragraphBottomSpacing / pt,
                 layoutModel: .character
             )
@@ -441,7 +443,7 @@ final class SearchState {
             return RenderedBlock(
                 range: range,
                 topSurround: 0,
-                contentHeight: estimatedLineUnits(for: text),
+                contentHeight: estimatedLineUnits(for: text, charactersPerLine: layout.charactersPerLine()),
                 bottomSurround: 0,
                 layoutModel: .character
             )
@@ -449,24 +451,23 @@ final class SearchState {
             return RenderedBlock(
                 range: range,
                 topSurround: 0,
-                contentHeight: estimatedLineUnits(for: text),
+                contentHeight: estimatedLineUnits(for: text, charactersPerLine: layout.charactersPerLine()),
                 bottomSurround: 0,
                 layoutModel: .character
             )
         }
     }
 
-    private static func estimatedLineUnits(for text: String) -> CGFloat {
-        // Deliberate approximation: a fixed 72 characters per line, independent of the actual
-        // window width and font metrics. This feeds the scroll-position *estimate* only, so the
-        // error is a small scroll offset, never a correctness issue. Resizing the window therefore
-        // shifts the estimate; revisit this constant (or measure real content width) only if
-        // scroll accuracy becomes a complaint.
-        let approximateCharactersPerLine = 72.0
+    private static func estimatedLineUnits(for text: String, charactersPerLine: CGFloat) -> CGFloat {
+        // Approximate the rendered line count by wrapping each hard line at `charactersPerLine`,
+        // which the layout derives from the measured content width and font size. This feeds the
+        // scroll-position estimate only, so the residual error is a small scroll offset, never a
+        // correctness issue. Glyph widths vary, so this is an average, not an exact wrap.
+        let perLine = Double(max(charactersPerLine, 1))
         let lines = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
 
         let wrappedLineCount = lines.reduce(into: 0) { total, line in
-            total += max(Int(ceil(Double(max(line.count, 1)) / approximateCharactersPerLine)), 1)
+            total += max(Int(ceil(Double(max(line.count, 1)) / perLine)), 1)
         }
 
         return CGFloat(max(wrappedLineCount, 1))
