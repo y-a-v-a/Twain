@@ -25,12 +25,18 @@ struct HighlightingMarkdownParser: MarkupParser {
     /// Private Use Area character used to separate real content from the search trigger suffix.
     static let separator: Character = "\u{E000}"
 
+    /// The shared parse cache. Highlights are overlaid on the *same* `AttributedString` that
+    /// `SearchState` derived its match offsets from, so the offsets are aligned by construction
+    /// rather than by coincidence of two parsers producing identical output. The cache also
+    /// short-circuits when the markdown is unchanged, so a query or current-match change repaints
+    /// without re-parsing the document.
+    let cache: HighlightingMarkdownCache
     let matches: [Range<Int>]
     let currentMatchIndex: Int
-    private let baseParser = AttributedStringMarkdownParser(baseURL: nil)
 
     func attributedString(for input: String) throws -> AttributedString {
-        var result = try baseParser.attributedString(for: Self.markdown(from: input))
+        try cache.prepare(markdown: Self.markdown(from: input))
+        var result = cache.attributedString
 
         guard !matches.isEmpty else { return result }
 

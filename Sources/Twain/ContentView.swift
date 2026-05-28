@@ -43,6 +43,7 @@ struct ContentView: View {
 
     private var parser: HighlightingMarkdownParser {
         HighlightingMarkdownParser(
+            cache: searchCache,
             matches: isSearching ? searchState.matches : [],
             currentMatchIndex: searchState.currentMatchIndex
         )
