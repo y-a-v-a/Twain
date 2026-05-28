@@ -135,7 +135,8 @@ private struct RenderedBlock {
 
 @MainActor @Observable
 final class SearchState {
-    var query: String = ""
+    /// Mutated only through `updateQuery` / `reset` so that `matches` always reflects `query`.
+    private(set) var query: String = ""
 
     private(set) var matches: [Range<Int>] = []
     private(set) var currentMatchIndex: Int = 0
