@@ -107,11 +107,11 @@ Pure, `@MainActor` logic — eminently testable.
 - [x] `nextMatch` / `previousMatch`: wraparound at both ends; no-op when empty.
 - [x] Refresh-while-searching: `updateDocument` with an active query leaves
   `currentMatchIndex` valid and never traps.
-- [ ] `currentMatchFraction`: returns 0…1 (never NaN) for empty doc, single block,
+- [x] `currentMatchFraction`: returns 0…1 (never NaN) for empty doc, single block,
   and matches inside code block / table / heading; div-by-zero guards
-  (`weight == 0`, empty `rowRanges`). _(not yet written — beyond the order's step 3)_
-- [ ] `topLevelBlockRuns`: a table collapses to one block (not one-per-cell);
-  `tableRowRanges` count equals source row count. _(not yet written — beyond the order's step 3)_
+  (`weight == 0`, empty `rowRanges`).
+- [x] `topLevelBlockRuns`: a table collapses to one block (not one-per-cell);
+  `tableRowRanges` count equals source row count.
 
 ---
 

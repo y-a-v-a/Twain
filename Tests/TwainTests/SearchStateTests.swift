@@ -133,4 +133,83 @@ struct SearchStateTests {
             }
         }
     }
+
+    // MARK: - currentMatchFraction
+
+    @Test func currentMatchFractionIsNilWithoutMatches() {
+        let state = makeState()
+        state.updateDocument(markdown: "", using: HighlightingMarkdownCache())
+        state.updateQuery("anything")
+        #expect(state.currentMatchFraction == nil)
+    }
+
+    @Test func currentMatchFractionStaysWithinUnitInterval() {
+        // A match in each block kind that drives a different localFraction branch.
+        let docs = [
+            "plain paragraph with foo in it",
+            "# Heading with foo\n\nfollowed by body text",
+            "```\ncode line one\ncode foo line\n```",
+            "| col a | col b |\n| --- | --- |\n| 1 | foo |\n| 3 | 4 |",
+            "> a block quote mentioning foo",
+        ]
+
+        for doc in docs {
+            let state = makeState()
+            state.updateDocument(markdown: doc, using: HighlightingMarkdownCache())
+            state.updateQuery("foo")
+
+            guard let fraction = state.currentMatchFraction else {
+                Issue.record("expected a fraction for: \(doc)")
+                continue
+            }
+            #expect(fraction.isFinite)
+            #expect(fraction >= 0)
+            #expect(fraction <= 1)
+        }
+    }
+
+    // MARK: - topLevelBlockRuns
+
+    @Test func tableCollapsesToOneBlock() throws {
+        let cache = HighlightingMarkdownCache()
+        try cache.prepare(markdown: """
+            | a | b |
+            | --- | --- |
+            | 1 | 2 |
+            | 3 | 4 |
+            """)
+
+        let runs = SearchState.topLevelBlockRuns(in: cache.attributedString)
+        let tableRuns = runs.filter { run in
+            if case .table = run.intent?.kind { return true }
+            return false
+        }
+
+        // One block for the whole table, not one per cell.
+        #expect(tableRuns.count == 1)
+        // Header row + two data rows; the `---` delimiter line is not a row.
+        #expect(tableRuns.first?.tableRowRanges.count == 3)
+    }
+
+    @Test func blockRunsSeparateAdjacentBlockKinds() throws {
+        let cache = HighlightingMarkdownCache()
+        try cache.prepare(markdown: """
+            # Title
+
+            A paragraph.
+
+            | a | b |
+            | --- | --- |
+            | 1 | 2 |
+            """)
+
+        let runs = SearchState.topLevelBlockRuns(in: cache.attributedString)
+        // Heading, paragraph, and table are distinct top-level blocks.
+        #expect(runs.count >= 3)
+        let tableRuns = runs.filter { run in
+            if case .table = run.intent?.kind { return true }
+            return false
+        }
+        #expect(tableRuns.count == 1)
+    }
 }

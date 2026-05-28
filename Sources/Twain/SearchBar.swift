@@ -486,7 +486,7 @@ final class SearchState {
         return offsets
     }
 
-    private static func topLevelBlockRuns(
+    static func topLevelBlockRuns(
         in attributedString: AttributedString
     ) -> [(
         intent: PresentationIntent.IntentType?,
