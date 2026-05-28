@@ -457,6 +457,11 @@ final class SearchState {
     }
 
     private static func estimatedLineUnits(for text: String) -> CGFloat {
+        // Deliberate approximation: a fixed 72 characters per line, independent of the actual
+        // window width and font metrics. This feeds the scroll-position *estimate* only, so the
+        // error is a small scroll offset, never a correctness issue. Resizing the window therefore
+        // shifts the estimate; revisit this constant (or measure real content width) only if
+        // scroll accuracy becomes a complaint.
         let approximateCharactersPerLine = 72.0
         let lines = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
 
