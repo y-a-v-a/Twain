@@ -22,8 +22,15 @@ final class HighlightingMarkdownCache {
 }
 
 struct HighlightingMarkdownParser: MarkupParser {
-    /// Private Use Area character used to separate real content from the search trigger suffix.
+    /// Private Use Area character appended (with the render revision) to the markup string handed
+    /// to `StructuredText`, purely so its `onChange(of: markup)` fires when the query or current
+    /// match changes. It is never parsed — see `attributedString(for:)`.
     static let separator: Character = "\u{E000}"
+
+    /// The real document markdown to render. Passed in directly rather than recovered from the
+    /// `input` string, so a document that legitimately contains `separator` (U+E000) is not
+    /// truncated at that character while searching.
+    let markdown: String
 
     /// The shared parse cache. Highlights are overlaid on the *same* `AttributedString` that
     /// `SearchState` derived its match offsets from, so the offsets are aligned by construction
@@ -35,7 +42,9 @@ struct HighlightingMarkdownParser: MarkupParser {
     let currentMatchIndex: Int
 
     func attributedString(for input: String) throws -> AttributedString {
-        try cache.prepare(markdown: Self.markdown(from: input))
+        // `input` carries the re-render trigger suffix and is intentionally ignored; we parse the
+        // real `markdown` instead.
+        try cache.prepare(markdown: markdown)
         var result = cache.attributedString
 
         guard !matches.isEmpty else { return result }
@@ -59,14 +68,6 @@ struct HighlightingMarkdownParser: MarkupParser {
         }
 
         return result
-    }
-
-    static func markdown(from input: String) -> String {
-        guard let separatorIndex = input.firstIndex(of: separator) else {
-            return input
-        }
-
-        return String(input[..<separatorIndex])
     }
 }
 
