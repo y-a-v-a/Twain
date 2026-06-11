@@ -33,19 +33,17 @@ final class ScriptableDocument: NSObject {
     }
 
     override var objectSpecifier: NSScriptObjectSpecifier? {
-        MainActor.assumeIsolated {
-            guard
-                let appDescription = NSApplication.shared.classDescription
-                    as? NSScriptClassDescription,
-                let index = ScriptingRegistry.shared.index(of: self)
-            else { return nil }
-            return NSIndexSpecifier(
-                containerClassDescription: appDescription,
-                containerSpecifier: nil,
-                key: "scriptableDocuments",
-                index: index
-            )
-        }
+        guard
+            let appDescription = NSScriptClassDescription.classDescription(for: NSApplication.self)
+                as? NSScriptClassDescription,
+            let index = ScriptingRegistry.shared.index(of: self)
+        else { return nil }
+        return NSIndexSpecifier(
+            containerClassDescription: appDescription,
+            containerSpecifier: nil,
+            key: "scriptableDocuments",
+            index: index
+        )
     }
 
     // MARK: - Command handlers (sdef responds-to)
@@ -94,22 +92,30 @@ final class ScriptableDocument: NSObject {
 
 /// Open-document roster backing the application's `documents` scripting element, in window
 /// registration order (`document 1` is the longest-open window).
-@MainActor
-final class ScriptingRegistry {
+///
+/// Lock-protected rather than MainActor-isolated: the Apple Event machinery reads it through
+/// nonisolated paths (`objectSpecifier`, KVC) whose signatures can't carry actor isolation, and
+/// non-Sendable values can't be returned out of `MainActor.assumeIsolated`.
+final class ScriptingRegistry: @unchecked Sendable {
     static let shared = ScriptingRegistry()
 
-    private(set) var documents: [ScriptableDocument] = []
+    private let lock = NSLock()
+    private var registered: [ScriptableDocument] = []
+
+    var documents: [ScriptableDocument] {
+        lock.withLock { registered }
+    }
 
     func register(_ document: ScriptableDocument) {
-        documents.append(document)
+        lock.withLock { registered.append(document) }
     }
 
     func unregister(_ document: ScriptableDocument) {
-        documents.removeAll { $0 === document }
+        lock.withLock { registered.removeAll { $0 === document } }
     }
 
     func index(of document: ScriptableDocument) -> Int? {
-        documents.firstIndex { $0 === document }
+        lock.withLock { registered.firstIndex { $0 === document } }
     }
 }
 
@@ -118,6 +124,6 @@ extension NSApplication {
     /// itself so Cocoa Scripting's KVC lookup finds it directly on `NSApp` — the alternative,
     /// `application(_:delegateHandlesKey:)`, depends on SwiftUI's internal delegate forwarding.
     @objc var scriptableDocuments: [ScriptableDocument] {
-        MainActor.assumeIsolated { ScriptingRegistry.shared.documents }
+        ScriptingRegistry.shared.documents
     }
 }
