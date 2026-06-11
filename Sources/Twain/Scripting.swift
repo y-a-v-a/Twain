@@ -33,9 +33,11 @@ final class ScriptableDocument: NSObject {
     }
 
     override var objectSpecifier: NSScriptObjectSpecifier? {
+        // The container is the application class ('capp' in Twain.sdef), looked up through the
+        // suite registry: NSApplication.shared is MainActor-isolated and this override is not.
         guard
-            let appDescription = NSScriptClassDescription.classDescription(for: NSApplication.self)
-                as? NSScriptClassDescription,
+            let appDescription = NSScriptSuiteRegistry.shared()
+                .classDescription(withAppleEventCode: 0x6361_7070), // 'capp'
             let index = ScriptingRegistry.shared.index(of: self)
         else { return nil }
         return NSIndexSpecifier(
