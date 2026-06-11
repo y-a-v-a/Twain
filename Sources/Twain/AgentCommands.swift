@@ -126,7 +126,17 @@ final class AgentCommandCenter {
     /// Canonical form used to match notification targets against a window's `fileURL`. Resolving
     /// symlinks matters on macOS, where e.g. `/tmp` is a symlink to `/private/tmp`.
     nonisolated static func resolvedPath(_ path: String) -> String {
-        URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
+        var resolved = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
+        // resolvingSymlinksInPath is asymmetric about the /private prefix: it strips it from
+        // paths it resolved itself (/tmp/x → /tmp/x) but keeps it on paths that arrive already
+        // spelled /private/tmp/x — and for files that don't exist yet the strip never happens.
+        // Remove it for the standard /private roots so both spellings canonicalize identically.
+        for root in ["/private/tmp/", "/private/var/", "/private/etc/"]
+        where resolved.hasPrefix(root) {
+            resolved.removeFirst("/private".count)
+            break
+        }
+        return resolved
     }
 
     private func post(_ name: Notification.Name, path: String?, query: String? = nil) {

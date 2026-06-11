@@ -94,10 +94,17 @@ struct AgentCommandTests {
     @Test func resolvedPathCanonicalizesEquivalentPaths() {
         // /tmp is a symlink to /private/tmp on macOS. A notification target and a document
         // window's fileURL may arrive in either form; both must canonicalize identically or
-        // targeted refresh/find commands silently miss.
+        // targeted refresh/find commands silently miss. This must hold for files that don't
+        // exist yet — Foundation's /private handling is existence-dependent on its own.
         #expect(
             AgentCommandCenter.resolvedPath("/tmp/../tmp/notes.md")
                 == AgentCommandCenter.resolvedPath("/private/tmp/notes.md")
         )
+    }
+
+    @Test func resolvedPathStripsThePrivatePrefix() {
+        #expect(AgentCommandCenter.resolvedPath("/private/tmp/notes.md") == "/tmp/notes.md")
+        // Only the symlinked roots are rewritten; other /private paths pass through.
+        #expect(AgentCommandCenter.resolvedPath("/privateer/log.md") == "/privateer/log.md")
     }
 }
