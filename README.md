@@ -28,8 +28,14 @@ Installs `Twain.app` to `~/Applications` and a CLI wrapper to `~/.bin`, so you c
 
 ```bash
 twain file.md
-twain a.md b.md   # opens each in its own window
+twain a.md b.md                 # opens each in its own window
+twain -g report.md              # open without stealing focus
+twain --find "Install" file.md  # open and jump to the first match
+twain --refresh                 # reload every open document from disk
+generate-report | twain -       # render stdin
 ```
+
+See `twain --help` for all options.
 
 ## Keyboard Shortcuts
 
@@ -39,7 +45,7 @@ twain a.md b.md   # opens each in its own window
 | Cmd++ | Increase font size |
 | Cmd+- | Decrease font size |
 | Cmd+0 | Reset font size |
-| Cmd+R | Refresh file from disk |
+| Cmd+R | Refresh file from disk (documents also auto-reload on change) |
 | Cmd+Shift+F | Toggle serif font |
 
 Font size and font style preferences are saved and restored across app restarts.
@@ -57,12 +63,39 @@ Edit colors (hex `#RRGGBB`), heading scales, code block styling, and more. See `
 
 ## Features
 
+- Live reload: open documents follow the file on disk (atomic saves included)
 - Native syntax highlighting in code blocks (automatic language detection)
 - Sans-serif and serif font options
 - Persistent font size and style preferences
 - Customizable theming via external JSON
 - Light and dark mode support
 - Multiple window support
+- Scriptable via the `twain://` URL scheme and CLI — agent-friendly by design
+
+## Agents & Automation
+
+Twain is built to pair with coding agents and scripts: write a Markdown file and the open
+window re-renders automatically — no integration needed. For everything else there is the
+`twain://` URL scheme, usable from any process via `open`:
+
+| URL | Action |
+|-----|--------|
+| `twain://refresh` | Reload every open document from disk |
+| `twain://refresh?file=/abs/path.md` | Reload one document |
+| `twain://search?q=text` | Search all open documents, jump to the first match |
+| `twain://search?q=text&file=/abs/path.md` | Search one open document |
+| `twain://open?file=/abs/path.md` | Open a file |
+| `twain://open?file=/abs/path.md&search=text` | Open and jump to the first match of `text` |
+| `twain://open?file=/abs/path.md&activate=0` | Open without bringing Twain to the front |
+
+File paths must be absolute and query values percent-encoded:
+
+```bash
+open -g "twain://open?file=/tmp/plan.md&search=Phase%202"
+```
+
+The installed `twain` CLI wraps all of this (`--refresh`, `--find`, `--background`, stdin via
+`twain -`) so agents don't need to build URLs by hand.
 
 ## Stack
 

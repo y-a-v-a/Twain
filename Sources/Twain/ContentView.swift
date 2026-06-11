@@ -15,6 +15,10 @@ struct ContentView: View {
     /// search scroll-to so the active match is positioned by real pixels, not just an estimate.
     @State private var viewportSize: CGSize = .zero
     @State private var contentHeight: CGFloat = 0
+    @State private var fileWatcher: FileWatcher?
+    /// Search query from a `twain://open?…&search=` launch, held until the first layout pass so
+    /// the scroll-to-match estimate has real geometry to work with.
+    @State private var pendingFindQuery: String?
 
     /// Padding around the rendered content inside the scroll view. Mirrors the `.padding` modifiers
     /// below; used to map the estimated text fraction onto the measured content height.
@@ -76,7 +80,10 @@ struct ContentView: View {
                     .padding(.top, isSearching ? Self.searchTopInset : 0)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textual.structuredTextStyle(ThemedStructuredTextStyle(theme: theme))
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                        contentHeight = $0
+                        applyPendingFindIfReady()
+                    }
                 }
                 .onGeometryChange(for: CGSize.self) { $0.size } action: { viewportSize = $0 }
 
@@ -111,16 +118,79 @@ struct ContentView: View {
         }
         .onChange(of: fontSize, initial: true) { pushLayout() }
         .onChange(of: viewportSize.width) { pushLayout() }
-        .focusedValue(\.refresh, {
-            guard let url = fileURL,
-                  let data = try? Data(contentsOf: url),
-                  let string = String(data: data, encoding: .utf8)
-                      ?? String(data: data, encoding: .utf16)
-                      ?? String(data: data, encoding: .isoLatin1)
-            else { return }
-            text = string
-        })
+        .focusedValue(\.refresh, { reloadFromDisk() })
         .focusedValue(\.find, { isSearching = true })
+        .onAppear {
+            startWatchingFile()
+            pendingFindQuery = AgentCommandCenter.shared.consumePendingFind(forPath: resolvedFilePath)
+            applyPendingFindIfReady()
+        }
+        .onDisappear {
+            fileWatcher?.stop()
+            fileWatcher = nil
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .twainReloadDocument)) { notification in
+            guard matchesThisDocument(notification) else { return }
+            reloadFromDisk()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .twainFind)) { notification in
+            guard matchesThisDocument(notification),
+                  let query = notification.userInfo?[AgentCommandCenter.queryKey] as? String,
+                  !query.isEmpty
+            else { return }
+            // Also clears any pending entry an `open` command stored for this file, so the query
+            // doesn't resurface the next time a window for it appears.
+            _ = AgentCommandCenter.shared.consumePendingFind(forPath: resolvedFilePath)
+            beginSearch(query: query)
+        }
+    }
+
+    private var resolvedFilePath: String? {
+        fileURL.map { AgentCommandCenter.resolvedPath($0.path) }
+    }
+
+    /// Notifications without a path are broadcasts; with a path they target one file.
+    private func matchesThisDocument(_ notification: Notification) -> Bool {
+        guard let path = notification.userInfo?[AgentCommandCenter.pathKey] as? String else {
+            return true
+        }
+        return path == resolvedFilePath
+    }
+
+    private func reloadFromDisk() {
+        guard let url = fileURL,
+              let data = try? Data(contentsOf: url),
+              let string = String(data: data, encoding: .utf8)
+                  ?? String(data: data, encoding: .utf16)
+                  ?? String(data: data, encoding: .isoLatin1)
+        else { return }
+        text = string
+    }
+
+    private func startWatchingFile() {
+        guard fileWatcher == nil, let path = resolvedFilePath else { return }
+        // Routed through the same notification as twain://refresh so every window showing this
+        // file reloads, and on the main run loop where onReceive expects it.
+        fileWatcher = FileWatcher(url: URL(fileURLWithPath: path)) {
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: .twainReloadDocument,
+                    object: nil,
+                    userInfo: [AgentCommandCenter.pathKey: path]
+                )
+            }
+        }
+    }
+
+    private func beginSearch(query: String) {
+        isSearching = true
+        searchState.updateQuery(query)
+    }
+
+    private func applyPendingFindIfReady() {
+        guard let query = pendingFindQuery, contentHeight > 0 else { return }
+        pendingFindQuery = nil
+        beginSearch(query: query)
     }
 
     private func dismissSearch() {

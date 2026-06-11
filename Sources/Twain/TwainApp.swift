@@ -40,6 +40,7 @@ extension FocusedValues {
 
 @main
 struct TwainApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let theme = Theme.load()
 
     var body: some Scene {
