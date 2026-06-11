@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  swift:
+    name: Swift build & tests (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: swift build
+      - name: Run unit tests
+        run: swift test
+      - name: Assemble app bundle
+        run: ./build.sh
+
+  cli:
+    name: CLI tests (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run CLI tests
+        run: Tests/cli/run-tests.sh

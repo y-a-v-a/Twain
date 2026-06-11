@@ -97,6 +97,20 @@ open -g "twain://open?file=/tmp/plan.md&search=Phase%202"
 The installed `twain` CLI wraps all of this (`--refresh`, `--find`, `--background`, stdin via
 `twain -`) so agents don't need to build URLs by hand.
 
+## Development & Testing
+
+```bash
+swift test               # unit tests: search, URL command parsing, file watching,
+                         # notification payloads (macOS only)
+Tests/cli/run-tests.sh   # CLI behavior tests against a stubbed `open`
+                         # (runs on macOS and Linux, no Twain.app needed)
+```
+
+Both suites run in CI on every push (`.github/workflows/ci.yml`): the Swift job builds,
+tests, and assembles the app bundle on a macOS runner; the CLI job runs on Linux. Note the
+`FileWatcher` tests are timing-based (the watcher arms asynchronously and debounces), so
+they take a few seconds.
+
 ## Stack
 
 - SwiftUI + [Textual](https://github.com/gonzalezreal/textual) for native Markdown rendering with Prism.js syntax highlighting

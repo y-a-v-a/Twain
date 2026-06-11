@@ -95,7 +95,7 @@ final class AgentCommandCenter {
         case .open(let path, let searchQuery, let activate):
             if let searchQuery {
                 let resolved = Self.resolvedPath(path)
-                pendingFindByPath[resolved] = searchQuery
+                storePendingFind(query: searchQuery, forPath: resolved)
                 // If the document is already open, this applies the query right away (and the
                 // receiving window clears the pending entry). Otherwise the entry waits for the
                 // window the open below creates.
@@ -110,6 +110,12 @@ final class AgentCommandCenter {
                 configuration: configuration
             )
         }
+    }
+
+    /// Separate from `run(.open…)` so tests can exercise the pending store without the
+    /// `NSWorkspace` side effects of a real open.
+    func storePendingFind(query: String, forPath path: String) {
+        pendingFindByPath[path] = query
     }
 
     func consumePendingFind(forPath path: String?) -> String? {
