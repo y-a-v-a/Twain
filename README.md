@@ -97,6 +97,37 @@ open -g "twain://open?file=/tmp/plan.md&search=Phase%202"
 The installed `twain` CLI wraps all of this (`--refresh`, `--find`, `--background`, stdin via
 `twain -`) so agents don't need to build URLs by hand.
 
+### AppleScript
+
+Where the URL scheme is write-only, AppleScript adds the introspection half — ask Twain what
+is open and what it shows, via `osascript`:
+
+```applescript
+tell application "Twain"
+    count documents
+    get name of every document
+    get path of document 1
+    get source text of document 1     -- raw Markdown, follows live reloads
+    get rendered text of document 1   -- plain text after Markdown parsing
+    refresh document 1                -- re-read from disk
+    search document 1 for "Install"   -- open search, jump to first match
+    close document 1                  -- closes the window; disk is untouched
+end tell
+```
+
+One-liners for scripts and agents:
+
+```bash
+osascript -e 'tell application "Twain" to get path of every document'
+osascript -e 'tell application "Twain" to search document "README.md" for "Theming"'
+osascript -e 'tell application "Twain" to close every document'
+```
+
+Documents are addressable by index (registration order) or by file name. The first script
+that targets Twain triggers a one-time macOS Automation permission prompt for the calling
+app. The dictionary is defined in `Twain.sdef`; end-to-end checks live in
+`Tests/applescript/run-tests.sh` (macOS only).
+
 ## Development & Testing
 
 ```bash
@@ -104,6 +135,9 @@ swift test               # unit tests: search, URL command parsing, file watchin
                          # notification payloads (macOS only)
 Tests/cli/run-tests.sh   # CLI behavior tests against a stubbed `open`
                          # (runs on macOS and Linux, no Twain.app needed)
+Tests/applescript/run-tests.sh   # end-to-end AppleScript checks: builds the app,
+                                 # opens a fixture, drives it with osascript (macOS only,
+                                 # not in CI — Apple Events need a consent prompt)
 ```
 
 Both suites run in CI on every push (`.github/workflows/ci.yml`): the Swift job builds,

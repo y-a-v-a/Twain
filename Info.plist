@@ -7,9 +7,13 @@
     <key>CFBundleIdentifier</key>
     <string>io.vincentb.twain</string>
     <key>CFBundleVersion</key>
-    <string>1.1</string>
+    <string>1.2</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1</string>
+    <string>1.2</string>
+    <key>NSAppleScriptEnabled</key>
+    <true/>
+    <key>OSAScriptingDefinition</key>
+    <string>Twain.sdef</string>
     <key>CFBundleExecutable</key>
     <string>Twain</string>
     <key>CFBundleIconFile</key>

@@ -7,6 +7,7 @@ struct ContentView: View {
     let theme: Theme
     @AppStorage("fontSize") private var fontSize: Double = 16
     @AppStorage("useSerifFont") private var useSerifFont: Bool = false
+    @Environment(\.dismiss) private var dismiss
     @State private var text: String
     @State private var isSearching: Bool = false
     @State private var searchState: SearchState
@@ -16,6 +17,8 @@ struct ContentView: View {
     @State private var viewportSize: CGSize = .zero
     @State private var contentHeight: CGFloat = 0
     @State private var fileWatcher: FileWatcher?
+    /// This window's entry in the AppleScript `documents` collection.
+    @State private var scriptHandle: ScriptableDocument?
     /// Search query from a `twain://open?…&search=` launch, held until the first layout pass so
     /// the scroll-to-match estimate has real geometry to work with.
     @State private var pendingFindQuery: String?
@@ -115,6 +118,8 @@ struct ContentView: View {
         .background(theme.colors.background.dynamicColor)
         .onChange(of: text, initial: true) {
             searchState.updateDocument(markdown: text, using: searchCache)
+            scriptHandle?.sourceText = text
+            scriptHandle?.renderedText = searchCache.plainText
         }
         .onChange(of: fontSize, initial: true) { pushLayout() }
         .onChange(of: viewportSize.width) { pushLayout() }
@@ -122,12 +127,17 @@ struct ContentView: View {
         .focusedValue(\.find, { isSearching = true })
         .onAppear {
             startWatchingFile()
+            registerScriptHandle()
             pendingFindQuery = AgentCommandCenter.shared.consumePendingFind(forPath: resolvedFilePath)
             applyPendingFindIfReady()
         }
         .onDisappear {
             fileWatcher?.stop()
             fileWatcher = nil
+            if let scriptHandle {
+                ScriptingRegistry.shared.unregister(scriptHandle)
+            }
+            scriptHandle = nil
         }
         .onReceive(NotificationCenter.default.publisher(for: .twainReloadDocument)) { notification in
             guard matchesThisDocument(notification) else { return }
@@ -180,6 +190,19 @@ struct ContentView: View {
                 )
             }
         }
+    }
+
+    private func registerScriptHandle() {
+        guard scriptHandle == nil else { return }
+        let handle = ScriptableDocument(
+            name: fileURL?.lastPathComponent ?? "Untitled",
+            path: resolvedFilePath
+        )
+        handle.sourceText = text
+        handle.renderedText = searchCache.plainText
+        handle.onClose = { dismiss() }
+        ScriptingRegistry.shared.register(handle)
+        scriptHandle = handle
     }
 
     private func beginSearch(query: String) {
