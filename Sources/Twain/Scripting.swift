@@ -8,8 +8,12 @@ import Foundation
 /// The Apple Event machinery calls into this class on the main thread; the `@objc` entry points
 /// are nonisolated only because actor isolation cannot be added to `NSObject` overrides, and
 /// immediately hop into `MainActor.assumeIsolated`.
+///
+/// `@unchecked Sendable` records the invariant the compiler can't see: every mutation happens on
+/// the main thread (SwiftUI pushes text updates, the Apple Event machinery delivers commands),
+/// so capturing `self` across the `assumeIsolated` boundary is safe.
 @objc(ScriptableDocument)
-final class ScriptableDocument: NSObject {
+final class ScriptableDocument: NSObject, @unchecked Sendable {
     /// Display name (the file name); resolves `document "README.md"` name specifiers via the
     /// sdef's `pnam` property.
     @objc let name: String
