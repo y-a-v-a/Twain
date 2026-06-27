@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dictionary SYSTEM "file://localhost/System/Library/DTDs/sdef.dtd">
+<dictionary title="Twain Terminology">
+
+    <suite name="Standard Suite" code="core" description="Common terms for most applications.">
+        <command name="count" code="corecnte"
+                 description="Return the number of elements of a particular class within an object.">
+            <direct-parameter type="specifier" description="The objects to be counted."/>
+            <result type="integer" description="The number of elements."/>
+        </command>
+        <command name="exists" code="coredoex" description="Verify that an object exists.">
+            <direct-parameter type="any" description="The object in question."/>
+            <result type="boolean" description="Whether the object exists."/>
+        </command>
+        <command name="get" code="coregetd" description="Return the value of an object.">
+            <direct-parameter type="specifier" description="The object whose value is returned."/>
+            <result type="any" description="The value."/>
+        </command>
+        <command name="quit" code="aevtquit" description="Quit Twain."/>
+        <command name="close" code="coreclos"
+                 description="Close a document window. The file on disk is not touched.">
+            <direct-parameter type="specifier" description="The document(s) to close."/>
+        </command>
+    </suite>
+
+    <suite name="Twain Suite" code="Twai" description="Read and control the Twain Markdown viewer.">
+
+        <class name="application" code="capp" description="The Twain application.">
+            <cocoa class="NSApplication"/>
+            <element type="document">
+                <cocoa key="scriptableDocuments"/>
+            </element>
+            <property name="name" code="pnam" type="text" access="r"
+                      description="The name of the application."/>
+            <property name="frontmost" code="pisf" type="boolean" access="r"
+                      description="Is Twain the frontmost application?">
+                <cocoa key="isActive"/>
+            </property>
+            <property name="version" code="vers" type="text" access="r"
+                      description="The version of Twain."/>
+        </class>
+
+        <class name="document" code="docu" plural="documents"
+               description="An open Markdown document window.">
+            <cocoa class="ScriptableDocument"/>
+            <property name="name" code="pnam" type="text" access="r"
+                      description="The document's display name (its file name)."/>
+            <property name="path" code="ppth" type="text" access="r"
+                      description="The absolute path of the file on disk.">
+                <cocoa key="path"/>
+            </property>
+            <property name="source text" code="Tsrc" type="text" access="r"
+                      description="The raw Markdown currently shown (follows live reloads).">
+                <cocoa key="sourceText"/>
+            </property>
+            <property name="rendered text" code="Trnd" type="text" access="r"
+                      description="The document's plain text after Markdown parsing.">
+                <cocoa key="renderedText"/>
+            </property>
+            <responds-to command="refresh">
+                <cocoa method="handleRefreshScriptCommand:"/>
+            </responds-to>
+            <responds-to command="search">
+                <cocoa method="handleSearchScriptCommand:"/>
+            </responds-to>
+            <responds-to command="close">
+                <cocoa method="handleCloseScriptCommand:"/>
+            </responds-to>
+        </class>
+
+        <command name="refresh" code="TwaiRfsh" description="Re-read a document from disk.">
+            <direct-parameter type="specifier" description="The document(s) to refresh."/>
+        </command>
+
+        <command name="search" code="TwaiSrch"
+                 description="Open the search bar in a document and jump to the first match.">
+            <direct-parameter type="specifier" description="The document to search."/>
+            <parameter name="for" code="Qery" type="text" description="The text to search for.">
+                <cocoa key="query"/>
+            </parameter>
+        </command>
+
+    </suite>
+
+</dictionary>

@@ -7,13 +7,30 @@
     <key>CFBundleIdentifier</key>
     <string>io.vincentb.twain</string>
     <key>CFBundleVersion</key>
-    <string>1.0</string>
+    <string>1.2</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>1.2</string>
+    <key>NSAppleScriptEnabled</key>
+    <true/>
+    <key>OSAScriptingDefinition</key>
+    <string>Twain.sdef</string>
     <key>CFBundleExecutable</key>
     <string>Twain</string>
     <key>CFBundleIconFile</key>
     <string>Twain</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>io.vincentb.twain.command</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>twain</string>
+            </array>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+        </dict>
+    </array>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>

@@ -37,6 +37,7 @@ mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
 cp ".build/$CONFIG/Twain" "$APP_BUNDLE/Contents/MacOS/Twain"
 cp Info.plist "$APP_BUNDLE/Contents/Info.plist"
 cp Twain.icns "$APP_BUNDLE/Contents/Resources/Twain.icns"
+cp Twain.sdef "$APP_BUNDLE/Contents/Resources/Twain.sdef"
 # Copy SPM resource bundles so Textual can load Prism.js for syntax highlighting
 rm -rf "$APP_BUNDLE/Contents/Resources/"*.bundle
 for bundle in "$BUILD_DIR"/*.bundle; do

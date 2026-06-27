@@ -28,8 +28,14 @@ Installs `Twain.app` to `~/Applications` and a CLI wrapper to `~/.bin`, so you c
 
 ```bash
 twain file.md
-twain a.md b.md   # opens each in its own window
+twain a.md b.md                 # opens each in its own window
+twain -g report.md              # open without stealing focus
+twain --find "Install" file.md  # open and jump to the first match
+twain --refresh                 # reload every open document from disk
+generate-report | twain -       # render stdin
 ```
+
+See `twain --help` for all options.
 
 ## Keyboard Shortcuts
 
@@ -39,7 +45,7 @@ twain a.md b.md   # opens each in its own window
 | Cmd++ | Increase font size |
 | Cmd+- | Decrease font size |
 | Cmd+0 | Reset font size |
-| Cmd+R | Refresh file from disk |
+| Cmd+R | Refresh file from disk (documents also auto-reload on change) |
 | Cmd+Shift+F | Toggle serif font |
 
 Font size and font style preferences are saved and restored across app restarts.
@@ -57,12 +63,87 @@ Edit colors (hex `#RRGGBB`), heading scales, code block styling, and more. See `
 
 ## Features
 
+- Live reload: open documents follow the file on disk (atomic saves included)
 - Native syntax highlighting in code blocks (automatic language detection)
 - Sans-serif and serif font options
 - Persistent font size and style preferences
 - Customizable theming via external JSON
 - Light and dark mode support
 - Multiple window support
+- Scriptable via the `twain://` URL scheme and CLI — agent-friendly by design
+
+## Agents & Automation
+
+Twain is built to pair with coding agents and scripts: write a Markdown file and the open
+window re-renders automatically — no integration needed. For everything else there is the
+`twain://` URL scheme, usable from any process via `open`:
+
+| URL | Action |
+|-----|--------|
+| `twain://refresh` | Reload every open document from disk |
+| `twain://refresh?file=/abs/path.md` | Reload one document |
+| `twain://search?q=text` | Search all open documents, jump to the first match |
+| `twain://search?q=text&file=/abs/path.md` | Search one open document |
+| `twain://open?file=/abs/path.md` | Open a file |
+| `twain://open?file=/abs/path.md&search=text` | Open and jump to the first match of `text` |
+| `twain://open?file=/abs/path.md&activate=0` | Open without bringing Twain to the front |
+
+File paths must be absolute and query values percent-encoded:
+
+```bash
+open -g "twain://open?file=/tmp/plan.md&search=Phase%202"
+```
+
+The installed `twain` CLI wraps all of this (`--refresh`, `--find`, `--background`, stdin via
+`twain -`) so agents don't need to build URLs by hand.
+
+### AppleScript
+
+Where the URL scheme is write-only, AppleScript adds the introspection half — ask Twain what
+is open and what it shows, via `osascript`:
+
+```applescript
+tell application "Twain"
+    count documents
+    get name of every document
+    get path of document 1
+    get source text of document 1     -- raw Markdown, follows live reloads
+    get rendered text of document 1   -- plain text after Markdown parsing
+    refresh document 1                -- re-read from disk
+    search document 1 for "Install"   -- open search, jump to first match
+    close document 1                  -- closes the window; disk is untouched
+end tell
+```
+
+One-liners for scripts and agents:
+
+```bash
+osascript -e 'tell application "Twain" to get path of every document'
+osascript -e 'tell application "Twain" to search document "README.md" for "Theming"'
+osascript -e 'tell application "Twain" to close every document'
+```
+
+Documents are addressable by index (registration order) or by file name. The first script
+that targets Twain triggers a one-time macOS Automation permission prompt for the calling
+app. The dictionary is defined in `Twain.sdef`; end-to-end checks live in
+`Tests/applescript/run-tests.sh` (macOS only).
+
+## Development & Testing
+
+```bash
+swift test               # unit tests: search, URL command parsing, file watching,
+                         # notification payloads (macOS only)
+Tests/cli/run-tests.sh   # CLI behavior tests against a stubbed `open`
+                         # (runs on macOS and Linux, no Twain.app needed)
+Tests/applescript/run-tests.sh   # end-to-end AppleScript checks: builds the app,
+                                 # opens a fixture, drives it with osascript (macOS only,
+                                 # not in CI — Apple Events need a consent prompt)
+```
+
+Both suites run in CI on every push (`.github/workflows/ci.yml`): the Swift job builds,
+tests, and assembles the app bundle on a macOS runner; the CLI job runs on Linux. Note the
+`FileWatcher` tests are timing-based (the watcher arms asynchronously and debounces), so
+they take a few seconds.
 
 ## Stack
 
