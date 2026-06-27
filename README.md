@@ -42,6 +42,7 @@ See `twain --help` for all options.
 | Shortcut | Action |
 |----------|--------|
 | Cmd+O | Open file |
+| Cmd+, | Open Settings (edit theme) |
 | Cmd++ | Increase font size |
 | Cmd+- | Decrease font size |
 | Cmd+0 | Reset font size |
@@ -52,14 +53,20 @@ Font size and font style preferences are saved and restored across app restarts.
 
 ## Theming
 
-Twain supports custom themes via a JSON file at `~/.config/twain/theme.json`. Copy the included `theme.json` as a starting point:
+Twain renders with a built-in theme that you can fully customize via a JSON file at
+`~/.config/twain/theme.json`. The file is **created automatically** on first launch, seeded
+with the default theme — there's nothing to copy or set up by hand.
 
-```bash
-mkdir -p ~/.config/twain
-cp theme.json ~/.config/twain/theme.json
-```
+The easiest way in: open **Settings** (`Cmd+,`, under the **Twain** menu) and click
+**Edit Theme…**. That opens `~/.config/twain/theme.json` in your default editor (creating it
+first if it's missing). Edits are **applied live** — save the file and open windows re-style
+instantly, no restart needed.
 
-Edit colors (hex `#RRGGBB`), heading scales, code block styling, and more. See `theme.json` for all available options. If the file is missing or invalid, Twain falls back to its built-in defaults.
+You can tune colors (hex `#RRGGBB`), heading scales, code-block styling, paragraph line height
+(`paragraph.lineSpacingScale`), window padding (`layout.contentInset`), and more. See the
+repo's `theme.json` for all available options. Theme files stay forward-compatible: any section
+you omit falls back to its built-in default, and if the file is missing or invalid Twain uses
+the default theme.
 
 ## Features
 
@@ -67,7 +74,7 @@ Edit colors (hex `#RRGGBB`), heading scales, code block styling, and more. See `
 - Native syntax highlighting in code blocks (automatic language detection)
 - Sans-serif and serif font options
 - Persistent font size and style preferences
-- Customizable theming via external JSON
+- Customizable theming via external JSON — auto-created, editable from Settings, applied live
 - Light and dark mode support
 - Multiple window support
 - Scriptable via the `twain://` URL scheme and CLI — agent-friendly by design
