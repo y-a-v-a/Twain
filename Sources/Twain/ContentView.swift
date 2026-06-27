@@ -24,8 +24,9 @@ struct ContentView: View {
     @State private var pendingFindQuery: String?
 
     /// Padding around the rendered content inside the scroll view. Mirrors the `.padding` modifiers
-    /// below; used to map the estimated text fraction onto the measured content height.
-    private static let contentInset: CGFloat = 32
+    /// below; used to map the estimated text fraction onto the measured content height. Sourced from
+    /// the theme so it stays in sync with the rest of the styling.
+    private var contentInset: CGFloat { theme.contentInset }
     private static let searchTopInset: CGFloat = 36
 
     init(document: MarkdownDocument, fileURL: URL?, theme: Theme) {
@@ -79,7 +80,7 @@ struct ContentView: View {
                     .fontDesign(useSerifFont && theme.serifFontFamily == nil ? .serif : .default)
                     .textual.textSelection(.enabled)
                     .textual.highlighterTheme(theme.highlighterTheme)
-                    .padding(Self.contentInset)
+                    .padding(contentInset)
                     .padding(.top, isSearching ? Self.searchTopInset : 0)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textual.structuredTextStyle(ThemedStructuredTextStyle(theme: theme))
@@ -123,6 +124,7 @@ struct ContentView: View {
         }
         .onChange(of: fontSize, initial: true) { pushLayout() }
         .onChange(of: viewportSize.width) { pushLayout() }
+        .onChange(of: theme) { pushLayout() }
         .focusedValue(\.refresh, { reloadFromDisk() })
         .focusedValue(\.find, { isSearching = true })
         .onAppear {
@@ -222,7 +224,7 @@ struct ContentView: View {
     }
 
     private func pushLayout() {
-        let textWidth = max(viewportSize.width - 2 * Self.contentInset, 0)
+        let textWidth = max(viewportSize.width - 2 * contentInset, 0)
         searchState.updateLayout(
             theme.blockLayout(fontSize: CGFloat(fontSize), contentWidth: textWidth),
             markdown: text,
@@ -242,8 +244,8 @@ struct ContentView: View {
         // the top (clearing the search bar), clamped so the ends of the document still scroll fully.
         let anchorY: CGFloat
         if content > viewport, viewport > 0 {
-            let topInset = Self.contentInset + (isSearching ? Self.searchTopInset : 0)
-            let textHeight = max(content - topInset - Self.contentInset, 1)
+            let topInset = contentInset + (isSearching ? Self.searchTopInset : 0)
+            let textHeight = max(content - topInset - contentInset, 1)
             let matchY = topInset + fraction * textHeight
 
             let targetWithinViewport: CGFloat = 0.3

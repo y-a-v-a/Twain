@@ -41,17 +41,21 @@ extension FocusedValues {
 @main
 struct TwainApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    private let theme = Theme.load()
+    @StateObject private var themeStore = ThemeStore()
 
     var body: some Scene {
         DocumentGroup(viewing: MarkdownDocument.self) { file in
-            ContentView(document: file.document, fileURL: file.fileURL, theme: theme)
+            ContentView(document: file.document, fileURL: file.fileURL, theme: themeStore.theme)
         }
         .commands {
             RefreshCommands()
             FindCommands()
             FontSizeCommands()
             FontStyleCommands()
+        }
+
+        Settings {
+            SettingsView()
         }
     }
 }
