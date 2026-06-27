@@ -24,7 +24,10 @@
     "borderWidth": 0.2
   },
   "paragraph": {
-    "lineSpacingScale": 0.25,
+    "lineSpacingScale": 0.4,
     "bottomSpacing": 16
+  },
+  "layout": {
+    "contentInset": 32
   }
 }
