@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Twain — a minimal Markdown viewer for macOS</title>
+  <style>
+    :root {
+      --primary: #060606;
+      --secondary: #6b6e7b;
+      --background: #ffffff;
+      --secondary-bg: #f7f7f9;
+      --link: #2c65cf;
+      --border: #e4e4e8;
+      --code-bg: #f5f5f8;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary: #fbfbfc;
+        --secondary: #9294a0;
+        --background: #18191d;
+        --secondary-bg: #25262a;
+        --link: #4c8ef8;
+        --border: #42444e;
+        --code-bg: #1f1f24;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 17px;
+      line-height: 1.6;
+      color: var(--primary);
+      background: var(--background);
+    }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .layout { max-width: 1000px; margin: 0 auto; display: flex; gap: 48px; padding: 0 32px; }
+    nav {
+      position: sticky; top: 0; align-self: flex-start;
+      height: 100vh; padding: 64px 0; flex: 0 0 180px;
+      font-size: 0.95em; overflow-y: auto;
+    }
+    nav .brand { font-weight: 600; font-size: 1.15em; margin-bottom: 20px; letter-spacing: -0.01em; }
+    nav ul { list-style: none; margin: 0; padding: 0; }
+    nav li { margin: 6px 0; }
+    nav a { color: var(--secondary); }
+    nav a:hover { color: var(--primary); text-decoration: none; }
+    nav .sub { padding-left: 14px; font-size: 0.92em; }
+
+    main { flex: 1 1 auto; min-width: 0; padding: 64px 0 96px; max-width: 720px; }
+    header { margin-bottom: 8px; }
+    h1 { font-size: 2.4em; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.02em; }
+    h2 {
+      font-size: 1.5em; font-weight: 600; margin: 56px 0 16px;
+      padding-bottom: 8px; border-bottom: 1px solid var(--border);
+      scroll-margin-top: 24px;
+    }
+    h3 { font-size: 1.2em; font-weight: 600; margin: 32px 0 8px; scroll-margin-top: 24px; }
+    p { margin: 0 0 16px; }
+    .lede { font-size: 1.2em; color: var(--secondary); margin-bottom: 24px; }
+    ul, ol { margin: 0 0 16px; padding-left: 24px; }
+    li { margin: 4px 0; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 0.85em;
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    pre {
+      background: var(--code-bg);
+      border-radius: 6px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 0 0 16px;
+    }
+    pre code { background: none; padding: 0; font-size: 0.85em; line-height: 1.5; }
+    kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.82em;
+      background: var(--secondary-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      white-space: nowrap;
+    }
+    table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 0.95em; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font-weight: 600; }
+    td code { white-space: nowrap; }
+    .note {
+      background: var(--secondary-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px 20px;
+      margin: 0 0 16px;
+      color: var(--secondary);
+      font-size: 0.95em;
+    }
+    .note strong { color: var(--primary); }
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--secondary);
+      font-size: 0.9em;
+    }
+    @media (max-width: 720px) {
+      .layout { display: block; padding: 0 24px; }
+      nav { position: static; height: auto; padding: 32px 0 0; flex-basis: auto; }
+      nav ul { columns: 2; }
+      main { padding-top: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav>
+      <div class="brand">Twain</div>
+      <ul>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#shortcuts">Keyboard shortcuts</a></li>
+        <li><a href="#theming">Theming</a></li>
+        <li class="sub"><a href="#theme-file">The theme file</a></li>
+        <li class="sub"><a href="#theme-default">Default theme</a></li>
+        <li><a href="#automation">Automation &amp; scripting</a></li>
+        <li class="sub"><a href="#url-scheme">URL scheme</a></li>
+        <li class="sub"><a href="#cli">CLI</a></li>
+        <li class="sub"><a href="#applescript">AppleScript</a></li>
+      </ul>
+    </nav>
+
+    <main>
+      <header>
+        <h1>Twain</h1>
+        <p class="lede">A fast, minimal Markdown viewer for macOS. Read-only — no editing, just rendering.</p>
+      </header>
+
+      <section id="overview">
+        <h2>Overview</h2>
+        <p>
+          Twain is a lightweight native macOS app for reading Markdown. It takes a
+          <code>.md</code> file and renders it as a clean, typeset document — headings, lists,
+          tables, links, block quotes, and syntax-highlighted code blocks — without any editing
+          chrome getting in the way. It is a viewer, not an editor: nothing you do in Twain ever
+          writes back to your files.
+        </p>
+        <p>What sets it apart:</p>
+        <ul>
+          <li><strong>Live reload</strong> — open documents follow the file on disk, so a window re-renders the moment its source changes (atomic saves included).</li>
+          <li><strong>Native rendering</strong> — built on SwiftUI with automatic syntax highlighting in code blocks.</li>
+          <li><strong>Light &amp; dark mode</strong> — follows the system appearance, with separate colors for each.</li>
+          <li><strong>Sans-serif or serif</strong> — toggle the body font, with your choice (and font size) remembered across launches.</li>
+          <li><strong>Multiple windows</strong> — open as many documents as you like, each in its own window.</li>
+          <li><strong>Agent-friendly</strong> — drives cleanly from scripts, coding agents, the <code>twain://</code> URL scheme, and AppleScript.</li>
+          <li><strong>Fully themeable</strong> — every color, scale, and spacing value is customizable through one external JSON file.</li>
+        </ul>
+        <p>
+          At roughly a 2&nbsp;MB release binary, it stays out of the way. This page covers the
+          two things you'll reach for most: <a href="#theming">theming the look</a> and
+          <a href="#automation">driving it from scripts</a>.
+        </p>
+      </section>
+
+      <section id="shortcuts">
+        <h2>Keyboard shortcuts</h2>
+        <table>
+          <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>Cmd</kbd>+<kbd>O</kbd></td><td>Open file</td></tr>
+            <tr><td><kbd>Cmd</kbd>+<kbd>,</kbd></td><td>Open Settings (edit theme)</td></tr>
+            <tr><td><kbd>Cmd</kbd>+<kbd>+</kbd></td><td>Increase font size</td></tr>
+            <tr><td><kbd>Cmd</kbd>+<kbd>-</kbd></td><td>Decrease font size</td></tr>
+            <tr><td><kbd>Cmd</kbd>+<kbd>0</kbd></td><td>Reset font size</td></tr>
+            <tr><td><kbd>Cmd</kbd>+<kbd>R</kbd></td><td>Refresh file from disk (documents also auto-reload on change)</td></tr>
+            <tr><td><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>Toggle serif font</td></tr>
+          </tbody>
+        </table>
+        <p>Font size and font-style preferences are saved and restored across app restarts.</p>
+      </section>
+
+      <section id="theming">
+        <h2>Theming</h2>
+        <p>
+          Twain ships with a polished built-in theme, but you can fully customize it through a
+          single JSON file at:
+        </p>
+        <pre><code>~/.config/twain/theme.json</code></pre>
+        <div class="note">
+          <strong>Nothing to set up by hand.</strong> The file is created automatically on first
+          launch, seeded with the default theme. If it is ever missing or invalid, Twain falls
+          back to the built-in default — so you can't break the app by editing it.
+        </div>
+
+        <h3 id="theme-file">The theme file</h3>
+        <p>
+          The easy way in: open <strong>Settings</strong> (<kbd>Cmd</kbd>+<kbd>,</kbd>, under the
+          <strong>Twain</strong> menu) and click <strong>Edit Theme…</strong>. That opens
+          <code>theme.json</code> in your default editor, creating it first if needed. Edits are
+          <strong>applied live</strong>: save the file and every open window re-styles instantly —
+          no restart required.
+        </p>
+        <p>
+          The theme is grouped into sections. Every section is optional — anything you leave out
+          falls back to its built-in default, which keeps your file forward-compatible as Twain
+          adds options. Colors are written as a pair of hex values, one for <code>light</code>
+          mode and one for <code>dark</code>:
+        </p>
+        <table>
+          <thead><tr><th>Section</th><th>What it controls</th></tr></thead>
+          <tbody>
+            <tr><td><code>colors</code></td><td>Text, background, link, border, and divider colors (each with a <code>light</code> / <code>dark</code> pair).</td></tr>
+            <tr><td><code>headings</code></td><td><code>fontScales</code> — the size of each heading level <code>H1</code>–<code>H6</code> relative to body text — and <code>fontWeight</code>.</td></tr>
+            <tr><td><code>codeBlock</code></td><td>Code-block <code>background</code>, <code>cornerRadius</code>, <code>padding</code>, and <code>fontScale</code>.</td></tr>
+            <tr><td><code>blockQuote</code></td><td><code>borderColor</code> and <code>borderWidth</code> for the quote rule.</td></tr>
+            <tr><td><code>paragraph</code></td><td><code>lineSpacingScale</code> (line height) and <code>bottomSpacing</code> between paragraphs.</td></tr>
+            <tr><td><code>layout</code></td><td><code>contentInset</code> — the padding between content and the window edges.</td></tr>
+          </tbody>
+        </table>
+
+        <h3 id="theme-default">The default theme</h3>
+        <p>
+          This is the seed file Twain creates for you. Use it as the reference for every
+          available option — copy a section, change a value, save, and watch it apply:
+        </p>
+        <pre><code>{
+  "colors": {
+    "primary":           { "light": "#060606", "dark": "#fbfbfc" },
+    "secondary":         { "light": "#6b6e7b", "dark": "#9294a0" },
+    "tertiary":          { "light": "#6b6e7b", "dark": "#6d707d" },
+    "background":        { "light": "#ffffff", "dark": "#18191d" },
+    "secondaryBackground":{ "light": "#f7f7f9", "dark": "#25262a" },
+    "link":              { "light": "#2c65cf", "dark": "#4c8ef8" },
+    "border":            { "light": "#e4e4e8", "dark": "#42444e" },
+    "divider":           { "light": "#d0d0d3", "dark": "#333438" }
+  },
+  "headings": {
+    "fontScales": [2.0, 1.5, 1.25, 1.0, 0.875, 0.85],
+    "fontWeight": "semibold"
+  },
+  "codeBlock": {
+    "background": { "light": "#f5f5f8", "dark": "#1f1f24" },
+    "cornerRadius": 6,
+    "padding": 16,
+    "fontScale": 0.85
+  },
+  "blockQuote": {
+    "borderColor": { "light": "#e4e4e8", "dark": "#42444e" },
+    "borderWidth": 0.2
+  },
+  "paragraph": {
+    "lineSpacingScale": 0.4,
+    "bottomSpacing": 16
+  },
+  "layout": {
+    "contentInset": 32
+  }
+}</code></pre>
+
+        <h3>Tips</h3>
+        <ul>
+          <li>Colors are <code>#RRGGBB</code> hex. Give each color a <code>light</code> and a <code>dark</code> value so it reads well in both appearances.</li>
+          <li><code>fontScales</code> are multipliers on the body font size — <code>2.0</code> means an <code>H1</code> is twice the body text. The array runs <code>H1</code> through <code>H6</code>.</li>
+          <li>Want a roomier read? Raise <code>paragraph.lineSpacingScale</code> and <code>layout.contentInset</code>.</li>
+          <li>Only include the sections you want to change — omitted values keep their defaults, so a minimal override file is perfectly valid.</li>
+          <li>Font <em>size</em> and the serif/sans toggle live outside the theme file: adjust them with the <a href="#shortcuts">keyboard shortcuts</a> above; they persist across restarts.</li>
+        </ul>
+      </section>
+
+      <section id="automation">
+        <h2>Automation &amp; scripting</h2>
+        <p>
+          Twain is built to pair with coding agents and scripts. The simplest integration is no
+          integration at all: write a Markdown file and the open window re-renders automatically.
+          For everything else there are two complementary halves — the <code>twain://</code> URL
+          scheme for <em>driving</em> Twain, and AppleScript for <em>asking</em> it what's open.
+        </p>
+
+        <h3 id="url-scheme">URL scheme</h3>
+        <p>
+          The <code>twain://</code> URL scheme is usable from any process via <code>open</code>:
+        </p>
+        <table>
+          <thead><tr><th>URL</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td><code>twain://refresh</code></td><td>Reload every open document from disk</td></tr>
+            <tr><td><code>twain://refresh?file=/abs/path.md</code></td><td>Reload one document</td></tr>
+            <tr><td><code>twain://search?q=text</code></td><td>Search all open documents, jump to the first match</td></tr>
+            <tr><td><code>twain://search?q=text&amp;file=/abs/path.md</code></td><td>Search one open document</td></tr>
+            <tr><td><code>twain://open?file=/abs/path.md</code></td><td>Open a file</td></tr>
+            <tr><td><code>twain://open?file=/abs/path.md&amp;search=text</code></td><td>Open and jump to the first match of <code>text</code></td></tr>
+            <tr><td><code>twain://open?file=/abs/path.md&amp;activate=0</code></td><td>Open without bringing Twain to the front</td></tr>
+          </tbody>
+        </table>
+        <p>File paths must be absolute and query values percent-encoded:</p>
+        <pre><code>open -g "twain://open?file=/tmp/plan.md&amp;search=Phase%202"</code></pre>
+
+        <h3 id="cli">CLI</h3>
+        <p>
+          The installed <code>twain</code> CLI wraps the URL scheme so agents don't have to build
+          URLs by hand:
+        </p>
+        <pre><code>twain file.md
+twain a.md b.md                 # opens each in its own window
+twain -g report.md              # open without stealing focus
+twain --find "Install" file.md  # open and jump to the first match
+twain --refresh                 # reload every open document from disk
+generate-report | twain -       # render stdin</code></pre>
+        <p>See <code>twain --help</code> for all options.</p>
+
+        <h3 id="applescript">AppleScript</h3>
+        <p>
+          Where the URL scheme is write-only, AppleScript adds the introspection half — ask Twain
+          what is open and what it shows, via <code>osascript</code>:
+        </p>
+        <pre><code>tell application "Twain"
+    count documents
+    get name of every document
+    get path of document 1
+    get source text of document 1     -- raw Markdown, follows live reloads
+    get rendered text of document 1   -- plain text after Markdown parsing
+    refresh document 1                -- re-read from disk
+    search document 1 for "Install"   -- open search, jump to first match
+    close document 1                  -- closes the window; disk is untouched
+end tell</code></pre>
+        <p>One-liners for scripts and agents:</p>
+        <pre><code>osascript -e 'tell application "Twain" to get path of every document'
+osascript -e 'tell application "Twain" to search document "README.md" for "Theming"'
+osascript -e 'tell application "Twain" to close every document'</code></pre>
+        <p>
+          Documents are addressable by index (registration order) or by file name. The first
+          script that targets Twain triggers a one-time macOS Automation permission prompt for the
+          calling app. The dictionary is defined in <code>Twain.sdef</code>.
+        </p>
+        <div class="note">
+          <strong>Read-only by design.</strong> Every automation hook either renders, reloads,
+          searches, or reports — none of them write to your Markdown files. <code>close</code>
+          closes the window; the file on disk is left untouched.
+        </div>
+      </section>
+
+      <footer>
+        Twain — a minimal Markdown viewer for macOS. Theme it by editing
+        <code>~/.config/twain/theme.json</code> and saving; open windows restyle live.
+      </footer>
+    </main>
+  </div>
+</body>
+</html>
