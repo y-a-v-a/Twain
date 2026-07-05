@@ -75,6 +75,12 @@ struct ContentView: View {
                         displayText,
                         parser: parser
                     )
+                    // Textual caches the resolved list item spacing in view state and only
+                    // re-resolves it when a block's spacing preference changes, so a live theme
+                    // edit of `list.itemSpacing` would otherwise render with the stale value.
+                    // Keying the subtree's identity on the value forces a fresh resolve; the
+                    // outer "content" id that search scrolling targets is unaffected.
+                    .id(theme.resolvedList.resolvedItemSpacing)
                     .id("content")
                     .font(font)
                     .fontDesign(useSerifFont && theme.serifFontFamily == nil ? .serif : .default)
