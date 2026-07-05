@@ -66,9 +66,13 @@ struct Theme: Codable, Equatable {
         /// Horizontal gap between a list marker and its item content, in font-relative units.
         var markerSpacing: CGFloat
         /// Vertical gap between list items, in font-relative units.
-        var itemSpacing: CGFloat
+        /// Optional: absent in theme files predating this key.
+        var itemSpacing: CGFloat?
 
-        static let fallback = ThemeList(markerSpacing: 0.5, itemSpacing: 0.25)
+        static let defaultItemSpacing: CGFloat = 0.25
+        var resolvedItemSpacing: CGFloat { itemSpacing ?? Self.defaultItemSpacing }
+
+        static let fallback = ThemeList(markerSpacing: 0.5, itemSpacing: defaultItemSpacing)
     }
 
     struct ThemeBlockQuote: Codable, Equatable {

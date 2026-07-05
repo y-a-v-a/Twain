@@ -84,7 +84,7 @@ struct ContentView: View {
                     .padding(.top, isSearching ? Self.searchTopInset : 0)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textual.structuredTextStyle(ThemedStructuredTextStyle(theme: theme))
-                    .textual.listItemSpacing(.fontScaled(top: theme.resolvedList.itemSpacing))
+                    .textual.listItemSpacing(.fontScaled(top: theme.resolvedList.resolvedItemSpacing))
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
                         contentHeight = $0
                         applyPendingFindIfReady()

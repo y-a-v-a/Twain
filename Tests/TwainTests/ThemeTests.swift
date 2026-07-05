@@ -85,7 +85,25 @@ struct ThemeTests {
         #expect(layout.tableCellVerticalPadding == 10)
         #expect(layout.tableCellHorizontalPadding == 20)
         #expect(theme.resolvedList.markerSpacing == 1)
-        #expect(theme.resolvedList.itemSpacing == 0.75)
+        #expect(theme.resolvedList.resolvedItemSpacing == 0.75)
+    }
+
+    // A theme.json written by a build where `list` had only `markerSpacing` must still
+    // decode — otherwise the whole file silently falls back to the default theme and
+    // `syncUserThemeFile`'s decode gate refuses to top it up.
+    @Test func listSectionWithoutItemSpacingStillDecodes() throws {
+        let data = try JSONEncoder().encode(Theme.default)
+        var object = try #require(
+            try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        var list = try #require(object["list"] as? [String: Any])
+        list.removeValue(forKey: "itemSpacing")
+        object["list"] = list
+        let trimmed = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(Theme.self, from: trimmed)
+        #expect(decoded.list?.itemSpacing == nil)
+        #expect(decoded.resolvedList.resolvedItemSpacing == Theme.ThemeList.defaultItemSpacing)
     }
 }
 
@@ -169,6 +187,26 @@ struct ThemeSyncTests {
         let synced = try JSONDecoder().decode(Theme.self, from: Data(contentsOf: url))
         #expect(synced.layout?.contentInset == Theme.defaultContentInset)
         #expect(synced.paragraph.bottomSpacing == 24)
+    }
+
+    // A file whose `list` section predates `itemSpacing` (written by an intermediate build)
+    // must get the new key while keeping the user's customized sibling value.
+    @Test func syncTopsUpKeyWithinExistingSection() throws {
+        let url = scratchURL()
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(), withIntermediateDirectories: true
+        )
+
+        var user = try defaultsDictionary()
+        user["list"] = ["markerSpacing": 0.6666666]
+        try JSONSerialization.data(withJSONObject: user).write(to: url)
+
+        Theme.syncUserThemeFile(at: url)
+
+        let synced = try JSONDecoder().decode(Theme.self, from: Data(contentsOf: url))
+        #expect(synced.list?.markerSpacing == 0.6666666)
+        #expect(synced.list?.itemSpacing == Theme.ThemeList.defaultItemSpacing)
     }
 
     @Test func syncLeavesUndecodableFileUntouched() throws {
