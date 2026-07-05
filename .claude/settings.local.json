@@ -1,20 +1,21 @@
 {
   "permissions": {
+    "defaultMode": "auto",
     "allow": [
-      "Bash(swift package:*)",
       "Bash(swift build:*)",
+      "Bash(swift test:*)",
+      "Bash(swift package:*)",
+      "Bash(./build.sh:*)",
+      "Bash(./run.sh:*)",
+      "Bash(./release.sh:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(./build.sh 2>&1)",
-      "Bash(./run.sh test.md 2>&1)",
-      "Bash(./release.sh 2>&1)",
-      "Bash(./run.sh /Users/nlbruiv/Projects/vincent/mdv/TASKS.md 2>&1)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:swiftlang.github.io)",
+      "WebFetch(domain:swiftpackageindex.com)",
       "WebSearch",
-      "Bash(./run.sh /Users/nlbruiv/Projects/vincent/mdv/test.md 2>&1)",
-      "Bash(chmod:*)"
+      "Read(//tmp/**)",
+      "Read(//private/tmp/**)"
     ]
   }
 }
