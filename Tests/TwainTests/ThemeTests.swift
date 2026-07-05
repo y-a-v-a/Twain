@@ -39,6 +39,54 @@ struct ThemeTests {
         theme.layout = nil
         #expect(theme.contentInset == Theme.defaultContentInset)
     }
+
+    // A theme.json predating the `table`/`list` sections and the newer heading/code-block
+    // keys must still decode and resolve to the built-in fallbacks.
+    @Test func themeWithoutSpacingKeysStillDecodesWithFallbacks() throws {
+        let data = try JSONEncoder().encode(Theme.default)
+        var object = try #require(
+            try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+        object.removeValue(forKey: "table")
+        object.removeValue(forKey: "list")
+        var headings = try #require(object["headings"] as? [String: Any])
+        headings.removeValue(forKey: "topSpacing")
+        headings.removeValue(forKey: "bottomSpacing")
+        object["headings"] = headings
+        var codeBlock = try #require(object["codeBlock"] as? [String: Any])
+        codeBlock.removeValue(forKey: "lineSpacingScale")
+        object["codeBlock"] = codeBlock
+        let trimmed = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(Theme.self, from: trimmed)
+        #expect(decoded.resolvedTable == .fallback)
+        #expect(decoded.resolvedList == .fallback)
+
+        let layout = decoded.styleLayout
+        #expect(layout.headingTopSpacing == Theme.ThemeHeadings.defaultTopSpacing)
+        #expect(layout.headingBottomSpacing == Theme.ThemeHeadings.defaultBottomSpacing)
+        #expect(layout.codeBlockLineSpacingScale == Theme.ThemeCodeBlock.defaultLineSpacingScale)
+    }
+
+    // Themed values must flow through to the layout metrics used by the renderer
+    // and the scroll estimator.
+    @Test func blockLayoutReadsThemedSpacingValues() {
+        var theme = Theme.default
+        theme.headings.topSpacing = 40
+        theme.headings.bottomSpacing = 20
+        theme.codeBlock.lineSpacingScale = 0.5
+        theme.table = Theme.ThemeTable(cellVerticalPadding: 10, cellHorizontalPadding: 20)
+        theme.list = Theme.ThemeList(markerSpacing: 1, itemSpacing: 0.75)
+
+        let layout = theme.styleLayout
+        #expect(layout.headingTopSpacing == 40)
+        #expect(layout.headingBottomSpacing == 20)
+        #expect(layout.codeBlockLineSpacingScale == 0.5)
+        #expect(layout.tableCellVerticalPadding == 10)
+        #expect(layout.tableCellHorizontalPadding == 20)
+        #expect(theme.resolvedList.markerSpacing == 1)
+        #expect(theme.resolvedList.itemSpacing == 0.75)
+    }
 }
 
 struct ThemeSyncTests {

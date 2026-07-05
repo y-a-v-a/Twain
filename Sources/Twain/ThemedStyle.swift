@@ -135,10 +135,11 @@ struct ThemedTableCellStyle: StructuredText.TableCellStyle {
     let theme: Theme
 
     func makeBody(configuration: Configuration) -> some View {
+        let layout = theme.styleLayout
         configuration.label
             .fontWeight(configuration.row == 0 ? .semibold : .regular)
-            .padding(.vertical, theme.styleLayout.tableCellVerticalPadding)
-            .padding(.horizontal, 13)
+            .padding(.vertical, layout.tableCellVerticalPadding)
+            .padding(.horizontal, layout.tableCellHorizontalPadding)
             .textual.lineSpacing(.fontScaled(0.25))
     }
 }
@@ -173,7 +174,9 @@ struct ThemedStructuredTextStyle: StructuredText.Style {
     var paragraphStyle: ThemedParagraphStyle { .init(theme: theme) }
     var blockQuoteStyle: ThemedBlockQuoteStyle { .init(theme: theme) }
     var codeBlockStyle: ThemedCodeBlockStyle { .init(theme: theme) }
-    var listItemStyle: StructuredText.DefaultListItemStyle { .default }
+    var listItemStyle: StructuredText.DefaultListItemStyle {
+        .default(markerSpacing: .fontScaled(theme.resolvedList.markerSpacing))
+    }
     var unorderedListMarker: StructuredText.HierarchicalSymbolListMarker {
         .hierarchical(.disc, .circle, .square)
     }

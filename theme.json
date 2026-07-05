@@ -11,13 +11,16 @@
   },
   "headings": {
     "fontScales": [2.0, 1.5, 1.25, 1.0, 0.875, 0.85],
-    "fontWeight": "semibold"
+    "fontWeight": "semibold",
+    "topSpacing": 24,
+    "bottomSpacing": 16
   },
   "codeBlock": {
     "background": { "light": "#f5f5f8", "dark": "#1f1f24" },
     "cornerRadius": 6,
     "padding": 16,
-    "fontScale": 0.85
+    "fontScale": 0.85,
+    "lineSpacingScale": 0.225
   },
   "blockQuote": {
     "borderColor": { "light": "#e4e4e8", "dark": "#42444e" },
@@ -26,6 +29,14 @@
   "paragraph": {
     "lineSpacingScale": 0.4,
     "bottomSpacing": 16
+  },
+  "table": {
+    "cellVerticalPadding": 6,
+    "cellHorizontalPadding": 13
+  },
+  "list": {
+    "markerSpacing": 0.5,
+    "itemSpacing": 0.25
   },
   "layout": {
     "contentInset": 32

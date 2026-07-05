@@ -16,6 +16,8 @@ struct Theme: Codable, Equatable {
     var codeBlock: ThemeCodeBlock
     var blockQuote: ThemeBlockQuote
     var paragraph: ThemeParagraph
+    var table: ThemeTable?
+    var list: ThemeList?
     var layout: ThemeLayout?
     var serifFontFamily: String?
     var sansSerifFontFamily: String?
@@ -34,6 +36,12 @@ struct Theme: Codable, Equatable {
     struct ThemeHeadings: Codable, Equatable {
         var fontScales: [CGFloat]
         var fontWeight: String
+        // Optional: absent in theme files predating these keys.
+        var topSpacing: CGFloat?
+        var bottomSpacing: CGFloat?
+
+        static let defaultTopSpacing: CGFloat = 24
+        static let defaultBottomSpacing: CGFloat = 16
     }
 
     struct ThemeCodeBlock: Codable, Equatable {
@@ -41,6 +49,26 @@ struct Theme: Codable, Equatable {
         var cornerRadius: CGFloat
         var padding: CGFloat
         var fontScale: CGFloat
+        // Optional: absent in theme files predating this key.
+        var lineSpacingScale: CGFloat?
+
+        static let defaultLineSpacingScale: CGFloat = 0.225
+    }
+
+    struct ThemeTable: Codable, Equatable {
+        var cellVerticalPadding: CGFloat
+        var cellHorizontalPadding: CGFloat
+
+        static let fallback = ThemeTable(cellVerticalPadding: 6, cellHorizontalPadding: 13)
+    }
+
+    struct ThemeList: Codable, Equatable {
+        /// Horizontal gap between a list marker and its item content, in font-relative units.
+        var markerSpacing: CGFloat
+        /// Vertical gap between list items, in font-relative units.
+        var itemSpacing: CGFloat
+
+        static let fallback = ThemeList(markerSpacing: 0.5, itemSpacing: 0.25)
     }
 
     struct ThemeBlockQuote: Codable, Equatable {
@@ -62,6 +90,11 @@ struct Theme: Codable, Equatable {
     var contentInset: CGFloat { layout?.contentInset ?? Theme.defaultContentInset }
 
     static let defaultContentInset: CGFloat = 32
+
+    /// Sections added after the first release; a custom `theme.json` predating them
+    /// must still decode, so they resolve to their fallbacks here.
+    var resolvedTable: ThemeTable { table ?? .fallback }
+    var resolvedList: ThemeList { list ?? .fallback }
 }
 
 extension Theme {
@@ -78,13 +111,16 @@ extension Theme {
         ),
         headings: ThemeHeadings(
             fontScales: [2, 1.5, 1.25, 1, 0.875, 0.85],
-            fontWeight: "semibold"
+            fontWeight: "semibold",
+            topSpacing: ThemeHeadings.defaultTopSpacing,
+            bottomSpacing: ThemeHeadings.defaultBottomSpacing
         ),
         codeBlock: ThemeCodeBlock(
             background: ThemeColor(light: "#f5f5f8", dark: "#1f1f24"),
             cornerRadius: 6,
             padding: 16,
-            fontScale: 0.85
+            fontScale: 0.85,
+            lineSpacingScale: ThemeCodeBlock.defaultLineSpacingScale
         ),
         blockQuote: ThemeBlockQuote(
             borderColor: ThemeColor(light: "#e4e4e8", dark: "#42444e"),
@@ -94,6 +130,8 @@ extension Theme {
             lineSpacingScale: 0.4,
             bottomSpacing: 16
         ),
+        table: .fallback,
+        list: .fallback,
         layout: ThemeLayout(
             contentInset: defaultContentInset
         )

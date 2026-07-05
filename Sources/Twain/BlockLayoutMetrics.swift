@@ -38,6 +38,8 @@ struct BlockLayoutMetrics {
     var tableCellSpacing: CGFloat
     /// Vertical padding applied inside each cell.
     var tableCellVerticalPadding: CGFloat
+    /// Horizontal padding applied inside each cell.
+    var tableCellHorizontalPadding: CGFloat
 
     var thematicBreakTopSpacing: CGFloat
     var thematicBreakBottomSpacing: CGFloat
@@ -78,8 +80,8 @@ extension Theme {
             baseFontSize: resolvedFontSize,
             pointsPerLineUnit: pointsPerLineUnit,
             headingScales: headings.fontScales,
-            headingTopSpacing: 24,
-            headingBottomSpacing: 16,
+            headingTopSpacing: headings.topSpacing ?? ThemeHeadings.defaultTopSpacing,
+            headingBottomSpacing: headings.bottomSpacing ?? ThemeHeadings.defaultBottomSpacing,
             headingDividerMaxLevel: 2,
             headingDividerGap: 4,
             headingDividerThickness: 1,
@@ -87,12 +89,13 @@ extension Theme {
             codeBlockPadding: codeBlock.padding,
             codeBlockBottomSpacing: 16,
             codeBlockFontScale: codeBlock.fontScale,
-            codeBlockLineSpacingScale: 0.225,
+            codeBlockLineSpacingScale: codeBlock.lineSpacingScale ?? ThemeCodeBlock.defaultLineSpacingScale,
             tableBottomSpacing: 16,
             tableInnerPadding: 1,
             tableOuterBorderWidth: 1,
             tableCellSpacing: 1,
-            tableCellVerticalPadding: 6,
+            tableCellVerticalPadding: resolvedTable.cellVerticalPadding,
+            tableCellHorizontalPadding: resolvedTable.cellHorizontalPadding,
             thematicBreakTopSpacing: 24,
             thematicBreakBottomSpacing: 24,
             thematicBreakRuleFontScale: 0.25,
