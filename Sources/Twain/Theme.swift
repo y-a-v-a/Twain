@@ -114,23 +114,62 @@ extension Theme {
         return theme
     }
 
-    /// Ensure the user's theme file exists, seeding it from `default` (and creating the
-    /// parent directory) when absent, so the editor always has a valid file to open.
-    /// Errors are intentionally swallowed to match `load()`'s tolerant behavior.
-    static func ensureUserThemeFileExists() {
-        guard !FileManager.default.fileExists(atPath: userThemeURL.path) else { return }
-        try? FileManager.default.createDirectory(
-            at: userThemeURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
+    /// Seed the user's theme file from `default` when absent, and top up an existing file
+    /// with keys added by newer versions of the app — user values always win, new keys get
+    /// their default. The merge happens at the JSON level so keys the decoder doesn't know
+    /// about survive a rewrite. A file that doesn't decode as a `Theme` (broken, or mid-edit)
+    /// is left untouched. Errors are intentionally swallowed to match `load()`'s tolerant
+    /// behavior.
+    static func syncUserThemeFile(at url: URL = userThemeURL) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        if let data = try? encoder.encode(Theme.default) {
+        guard let defaultData = try? encoder.encode(Theme.default),
+              let defaults = (try? JSONSerialization.jsonObject(with: defaultData)) as? [String: Any]
+        else { return }
+
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            try? FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
             // Atomic write so an interrupted/failed write can't leave a half-written file that
             // the editor opens and `load()` then rejects. Any failure here is swallowed — a
             // missing file just means the app keeps using the default theme.
-            try? data.write(to: userThemeURL, options: .atomic)
+            try? defaultData.write(to: url, options: .atomic)
+            return
         }
+
+        guard let data = try? Data(contentsOf: url),
+              (try? JSONDecoder().decode(Theme.self, from: data)) != nil,
+              let user = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        else { return }
+
+        let merged = topUp(user: user, defaults: defaults)
+        // Rewrite only when the merge added keys, so an up-to-date file keeps its formatting.
+        guard !(merged as NSDictionary).isEqual(to: user) else { return }
+        if let out = try? JSONSerialization.data(
+            withJSONObject: merged,
+            options: [.prettyPrinted, .sortedKeys]
+        ) {
+            try? out.write(to: url, options: .atomic)
+        }
+    }
+
+    /// Recursively fill keys missing from `user` with their `defaults` value. Existing user
+    /// values are never replaced, including whole nested objects the user has customized.
+    static func topUp(user: [String: Any], defaults: [String: Any]) -> [String: Any] {
+        var result = user
+        for (key, defaultValue) in defaults {
+            switch (result[key], defaultValue) {
+            case (nil, _):
+                result[key] = defaultValue
+            case let (userObject as [String: Any], defaultObject as [String: Any]):
+                result[key] = topUp(user: userObject, defaults: defaultObject)
+            default:
+                break
+            }
+        }
+        return result
     }
 }
 

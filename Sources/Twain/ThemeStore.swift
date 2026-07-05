@@ -20,7 +20,8 @@ final class ThemeStore: ObservableObject {
         // Seed the file (and its directory) up front so the watcher can arm directly on it.
         // Otherwise, on a fresh machine ~/.config/twain doesn't exist, arm() finds nothing to
         // watch, and edits made after the first "Edit Theme" wouldn't live-reload until relaunch.
-        Theme.ensureUserThemeFileExists()
+        // For an existing file this also tops up keys added by newer app versions.
+        Theme.syncUserThemeFile()
         theme = Theme.load()
         arm()
     }

@@ -29,9 +29,10 @@ struct SettingsView: View {
     }
 
     /// Open the user's theme file in their default editor for JSON, creating it from the
-    /// default theme first if it doesn't exist yet (so the editor always has a valid file).
+    /// default theme first if it doesn't exist yet (so the editor always has a valid file)
+    /// and topping up any keys added since the file was written.
     private func editTheme() {
-        Theme.ensureUserThemeFileExists()
+        Theme.syncUserThemeFile()
         NSWorkspace.shared.open(Theme.userThemeURL)
     }
 }
