@@ -157,3 +157,7 @@ they take a few seconds.
 - SwiftUI + [Textual](https://github.com/gonzalezreal/textual) for native Markdown rendering with Prism.js syntax highlighting
 - Swift Package Manager
 - ~2MB release binary
+
+---
+
+© 2026 Vincent Bruijn
