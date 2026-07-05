@@ -16,8 +16,9 @@ TMPFILE=$(mktemp)
 cat > "$TMPFILE" << 'SCRIPT'
 #!/bin/bash
 # twain — CLI for the Twain Markdown viewer.
-# Plain file opens go through `open -a Twain`; everything else is driven over
-# the twain:// URL scheme so it also works on an already-running instance.
+# Plain file opens go through `open -a <installed app>`; everything else is
+# driven over the twain:// URL scheme so it also works on an already-running
+# instance.
 set -euo pipefail
 
 usage() {
@@ -69,10 +70,30 @@ abspath() (
     cd "$(dirname "$1")" && printf '%s/%s' "$(pwd)" "$(basename "$1")"
 )
 
+# The installed app bundle, resolved by path. Opening by path (never by name)
+# matters: a LaunchServices name lookup for "Twain" can resolve to a stale
+# build copy inside a source checkout's .build directory instead of the
+# installed app.
+APP=""
+for candidate in "$HOME/Applications/Twain.app" "/Applications/Twain.app"; do
+    if [ -d "$candidate" ]; then
+        APP="$candidate"
+        break
+    fi
+done
+
+require_app() {
+    if [ -z "$APP" ]; then
+        echo "twain: Twain.app not found in ~/Applications or /Applications" >&2
+        exit 1
+    fi
+}
+
 # Launch Twain (without activating) before sending it a twain:// URL, so the
 # URL is delivered to a running instance rather than racing app launch.
 ensure_running() {
-    open -g -a Twain
+    require_app
+    open -g -a "$APP"
 }
 
 BACKGROUND=0
@@ -91,14 +112,9 @@ while [ $# -gt 0 ]; do
             ;;
         -r|--refresh) REFRESH=1 ;;
         --version)
-            for app in "$HOME/Applications/Twain.app" "/Applications/Twain.app"; do
-                if [ -d "$app" ]; then
-                    defaults read "$app/Contents/Info.plist" CFBundleShortVersionString
-                    exit 0
-                fi
-            done
-            echo "twain: Twain.app not found" >&2
-            exit 1
+            require_app
+            defaults read "$APP/Contents/Info.plist" CFBundleShortVersionString
+            exit 0
             ;;
         -h|--help) usage; exit 0 ;;
         -) READ_STDIN=1 ;;
@@ -137,11 +153,13 @@ if [ "${#FILES[@]}" -eq 0 ]; then
         ensure_running
         open ${OPEN_FLAGS[@]+"${OPEN_FLAGS[@]}"} "twain://search?q=$(urlencode "$FIND_QUERY")"
     else
-        open ${OPEN_FLAGS[@]+"${OPEN_FLAGS[@]}"} -a Twain
+        require_app
+        open ${OPEN_FLAGS[@]+"${OPEN_FLAGS[@]}"} -a "$APP"
     fi
     exit 0
 fi
 
+require_app
 for f in "${FILES[@]}"; do
     if [ ! -e "$f" ]; then
         echo "twain: no such file: $f" >&2
@@ -154,7 +172,7 @@ for f in "${FILES[@]}"; do
         [ "$BACKGROUND" -eq 1 ] && URL="$URL&activate=0"
         open ${OPEN_FLAGS[@]+"${OPEN_FLAGS[@]}"} "$URL"
     else
-        open ${OPEN_FLAGS[@]+"${OPEN_FLAGS[@]}"} -a Twain "$ABS"
+        open ${OPEN_FLAGS[@]+"${OPEN_FLAGS[@]}"} -a "$APP" "$ABS"
     fi
 done
 SCRIPT

@@ -100,9 +100,17 @@ extension Theme {
     )
 
     /// Location of the user's theme file. Single source of truth shared by `load()`, the
-    /// file watcher in `ThemeStore`, and the "Edit Theme" settings action.
-    static let userThemeURL: URL = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent(".config/twain/theme.json")
+    /// file watcher in `ThemeStore`, and the "Edit Theme" settings action. The
+    /// `TWAIN_CONFIG_DIR` environment variable overrides the directory so test harnesses
+    /// can isolate the app from the real `~/.config/twain` (a plain `$HOME` override is
+    /// not enough — `homeDirectoryForCurrentUser` ignores it).
+    static let userThemeURL: URL = {
+        if let dir = ProcessInfo.processInfo.environment["TWAIN_CONFIG_DIR"], !dir.isEmpty {
+            return URL(fileURLWithPath: dir).appendingPathComponent("theme.json")
+        }
+        return FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config/twain/theme.json")
+    }()
 
     static func load() -> Theme {
         guard FileManager.default.fileExists(atPath: userThemeURL.path),
