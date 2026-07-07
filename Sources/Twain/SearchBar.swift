@@ -15,6 +15,7 @@ final class HighlightingMarkdownCache {
         guard markdown != self.markdown else { return }
 
         let parsed = try baseParser.attributedString(for: markdown)
+            .expandingTaskListMarkers()
         self.markdown = markdown
         attributedString = parsed
         plainText = String(parsed.characters)
