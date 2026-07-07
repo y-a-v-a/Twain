@@ -1,6 +1,29 @@
 #!/bin/bash
 set -euo pipefail
 
+usage() {
+    cat <<'EOF'
+Usage: install.sh [-h|--help]
+
+Builds and installs Twain, the Markdown viewer:
+
+  1. Builds a RELEASE build via ./build.sh --release
+     (never the debug build in .build/debug — use build.sh for dev builds)
+  2. Installs the app bundle to ~/Applications/Twain.app,
+     replacing any existing copy
+  3. Installs the `twain` CLI to ~/.bin/twain
+
+Note: the installed app reads the live ~/.config/twain/theme.json;
+installing does not touch or reset it.
+EOF
+}
+
+case "${1:-}" in
+    "") ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "install.sh: unknown option: $1" >&2; usage >&2; exit 1 ;;
+esac
+
 ./build.sh --release
 
 APP_SOURCE=".build/release/Twain.app"
