@@ -1,11 +1,56 @@
 import SwiftUI
 import AppKit
 
+/// App-level appearance override, persisted in UserDefaults. `.system` follows the OS setting;
+/// the other cases pin every window (including title bars and this Settings window) via
+/// `NSApp.appearance` — theme colors are light/dark pairs, so they resolve per-appearance.
+enum Appearance: String, CaseIterable {
+    case system, light, dark
+
+    static let defaultsKey = "appearance"
+
+    var label: String {
+        switch self {
+        case .system: "System"
+        case .light: "Light"
+        case .dark: "Dark"
+        }
+    }
+
+    /// The stored choice, falling back to `.system` for a missing or unrecognized value.
+    static func stored(in defaults: UserDefaults = .standard) -> Appearance {
+        defaults.string(forKey: defaultsKey).flatMap(Appearance.init) ?? .system
+    }
+
+    @MainActor
+    func apply() {
+        NSApp.appearance = switch self {
+        case .system: nil
+        case .light: NSAppearance(named: .aqua)
+        case .dark: NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
 /// Content of the app's Settings window (opened via the "Settings…" item that SwiftUI
 /// synthesizes under the Twain menu from the `Settings` scene, with the standard ⌘, shortcut).
 struct SettingsView: View {
+    @AppStorage(Appearance.defaultsKey) private var appearance: Appearance = .system
+
     var body: some View {
         Form {
+            Section("Appearance") {
+                Picker("Appearance", selection: $appearance) {
+                    ForEach(Appearance.allCases, id: \.self) { choice in
+                        Text(choice.label).tag(choice)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: appearance) { _, newValue in
+                    newValue.apply()
+                }
+            }
+
             Section("Theme") {
                 LabeledContent("Configuration file") {
                     Text(Theme.userThemeURL.path)

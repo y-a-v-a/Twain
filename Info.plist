@@ -7,9 +7,9 @@
     <key>CFBundleIdentifier</key>
     <string>io.vincentb.twain</string>
     <key>CFBundleVersion</key>
-    <string>1.2</string>
+    <string>1.3</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.2</string>
+    <string>1.3</string>
     <key>NSAppleScriptEnabled</key>
     <true/>
     <key>OSAScriptingDefinition</key>

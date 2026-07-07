@@ -163,6 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         registerURLHandler()
+        Appearance.stored().apply()
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
