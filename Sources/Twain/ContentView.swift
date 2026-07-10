@@ -134,6 +134,12 @@ struct ContentView: View {
         .onChange(of: theme) { pushLayout() }
         .focusedValue(\.refresh, { reloadFromDisk() })
         .focusedValue(\.find, { isSearching = true })
+        .focusedValue(\.printDocument, {
+            DocumentPrinter.runPrintPanel(job: printJob, attachedTo: NSApp.keyWindow)
+        })
+        .focusedValue(\.exportPDF, {
+            DocumentPrinter.presentPDFExportPanel(job: printJob, attachedTo: NSApp.keyWindow)
+        })
         .onAppear {
             startWatchingFile()
             registerScriptHandle()
@@ -162,6 +168,17 @@ struct ContentView: View {
             _ = AgentCommandCenter.shared.consumePendingFind(forPath: resolvedFilePath)
             beginSearch(query: query)
         }
+    }
+
+    /// Snapshot of everything the print pipeline needs to reproduce this window's rendering.
+    private var printJob: PrintJob {
+        PrintJob(
+            markdown: text,
+            theme: theme,
+            fontSize: fontSize,
+            useSerifFont: useSerifFont,
+            title: fileURL?.deletingPathExtension().lastPathComponent ?? "Untitled"
+        )
     }
 
     private var resolvedFilePath: String? {
