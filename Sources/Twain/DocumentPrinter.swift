@@ -99,8 +99,8 @@ enum DocumentPrinter {
 
     // MARK: Entry points
 
-    static func runPrintPanel(job: PrintJob, attachedTo window: NSWindow?) {
-        guard let data = makePDFData(job: job, paperSize: defaultPaperSize()),
+    static func runPrintPanel(job: PrintJob, attachedTo window: NSWindow?) async {
+        guard let data = await makePDFData(job: job, paperSize: defaultPaperSize()),
               let document = PDFDocument(data: data)
         else { return }
 
@@ -134,7 +134,7 @@ enum DocumentPrinter {
         panel.nameFieldStringValue = job.title + ".pdf"
         let export: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .OK, let url = panel.url else { return }
-            exportPDF(job: job, to: url)
+            Task { await exportPDF(job: job, to: url) }
         }
         if let window {
             panel.beginSheetModal(for: window, completionHandler: export)
@@ -144,8 +144,8 @@ enum DocumentPrinter {
     }
 
     @discardableResult
-    static func exportPDF(job: PrintJob, to url: URL, paperSize: CGSize? = nil) -> Bool {
-        guard let data = makePDFData(job: job, paperSize: paperSize ?? defaultPaperSize())
+    static func exportPDF(job: PrintJob, to url: URL, paperSize: CGSize? = nil) async -> Bool {
+        guard let data = await makePDFData(job: job, paperSize: paperSize ?? defaultPaperSize())
         else { return false }
         return (try? data.write(to: url, options: .atomic)) != nil
     }
@@ -163,7 +163,7 @@ enum DocumentPrinter {
         job: PrintJob,
         paperSize: CGSize,
         margin: CGFloat = pageMargin
-    ) -> Data? {
+    ) async -> Data? {
         let bodyWidth = paperSize.width - 2 * margin
         let bodyHeight = paperSize.height - 2 * margin
         guard bodyWidth > 0, bodyHeight > 0 else { return nil }
@@ -179,6 +179,18 @@ enum DocumentPrinter {
         //   invocation — repeated calls within one pass drop text runs and drift. So the
         //   break scan and every page each run in their own render pass.
         renderer.render { _, _ in }
+
+        // Textual tokenizes code blocks for syntax highlighting in an async `.task`, which
+        // ImageRenderer does host — but only if we actually suspend (a nested RunLoop.run
+        // starves the chain and the colors never land). Wait a beat scaled to the number of
+        // fenced blocks so the passes below draw highlighted code; stragglers in enormous
+        // documents degrade to plain text, never broken layout.
+        let fences = job.markdown.components(separatedBy: "```").count - 1
+        let codeBlocks = max(fences / 2, job.markdown.contains("~~~") ? 1 : 0)
+        if codeBlocks > 0 {
+            let wait = min(0.5 + 0.05 * Double(codeBlocks), 3.0)
+            try? await Task.sleep(for: .seconds(wait))
+        }
 
         var contentSize = CGSize.zero
         var cleanRows: [Bool] = []

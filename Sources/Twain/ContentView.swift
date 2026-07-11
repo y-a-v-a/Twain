@@ -135,7 +135,9 @@ struct ContentView: View {
         .focusedValue(\.refresh, { reloadFromDisk() })
         .focusedValue(\.find, { isSearching = true })
         .focusedValue(\.printDocument, {
-            DocumentPrinter.runPrintPanel(job: printJob, attachedTo: NSApp.keyWindow)
+            let job = printJob
+            let window = NSApp.keyWindow
+            Task { await DocumentPrinter.runPrintPanel(job: job, attachedTo: window) }
         })
         .focusedValue(\.exportPDF, {
             DocumentPrinter.presentPDFExportPanel(job: printJob, attachedTo: NSApp.keyWindow)

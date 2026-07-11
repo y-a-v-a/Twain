@@ -127,11 +127,11 @@ struct DocumentPrinterTests {
             .appendingPathComponent("twain-print-test-\(UUID().uuidString).pdf")
     }
 
-    @Test func exportedPDFHasPagesAndSelectableText() throws {
+    @Test func exportedPDFHasPagesAndSelectableText() async throws {
         let url = tempPDFURL()
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let success = DocumentPrinter.exportPDF(
+        let success = await DocumentPrinter.exportPDF(
             job: makeJob(markdown: Self.longMarkdown),
             to: url,
             paperSize: CGSize(width: 595, height: 842) // A4, independent of local print setup
@@ -159,8 +159,8 @@ struct DocumentPrinterTests {
 
     // Pages must tile the document exactly: in order, no gaps, no repeats. The distinctive
     // per-section code lines double as position markers across the whole export.
-    @Test func pagesCoverTheDocumentInOrderWithoutRepeats() throws {
-        let data = try #require(DocumentPrinter.makePDFData(
+    @Test func pagesCoverTheDocumentInOrderWithoutRepeats() async throws {
+        let data = try #require(await DocumentPrinter.makePDFData(
             job: makeJob(markdown: Self.longMarkdown),
             paperSize: CGSize(width: 595, height: 842)
         ))
@@ -176,11 +176,60 @@ struct DocumentPrinterTests {
         #expect(markers == Array(1...40))
     }
 
-    @Test func exportHandlesEmptyDocument() throws {
+    // Syntax highlighting must survive into the printed output. Prism lives in Textual's
+    // resource bundle, which plain `swift test` can't locate; run with
+    //   PACKAGE_RESOURCE_BUNDLE_PATH="$PWD/.build/arm64-apple-macosx/debug" swift test
+    // to exercise this test — without the variable it skips rather than flakes.
+    @Test func printedCodeKeepsHighlightColorsWhenPrismIsAvailable() async throws {
+        guard ProcessInfo.processInfo.environment["PACKAGE_RESOURCE_BUNDLE_PATH"] != nil else {
+            return
+        }
+        let job = makeJob(markdown: """
+        ```swift
+        struct ContentView: View {
+            var body: some View { Text("hi") }
+        }
+        ```
+        """)
+        let data = try #require(await DocumentPrinter.makePDFData(
+            job: job,
+            paperSize: CGSize(width: 595, height: 842)
+        ))
+        let document = try #require(PDFDocument(data: data))
+        let page = try #require(document.page(at: 0))
+
+        // Rasterize the page and look for saturated pixels — keyword/string colors.
+        let bounds = page.bounds(for: .mediaBox)
+        let width = Int(bounds.width), height = Int(bounds.height)
+        let context = try #require(CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ))
+        context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        page.draw(with: .mediaBox, to: context)
+        let image = try #require(context.makeImage())
+        let pixelData = try #require(image.dataProvider?.data)
+        let bytes = try #require(CFDataGetBytePtr(pixelData))
+        let bytesPerPixel = image.bitsPerPixel / 8
+
+        var saturated = 0
+        for y in 0..<image.height {
+            for x in 0..<image.width {
+                let p = bytes + y * image.bytesPerRow + x * bytesPerPixel
+                let r = Int(p[0]), g = Int(p[1]), b = Int(p[2])
+                if abs(r - g) > 30 || abs(g - b) > 30 || abs(r - b) > 30 { saturated += 1 }
+            }
+        }
+        #expect(saturated > 100)
+    }
+
+    @Test func exportHandlesEmptyDocument() async throws {
         let url = tempPDFURL()
         defer { try? FileManager.default.removeItem(at: url) }
 
-        let success = DocumentPrinter.exportPDF(job: makeJob(markdown: ""), to: url)
+        let success = await DocumentPrinter.exportPDF(job: makeJob(markdown: ""), to: url)
         #expect(success)
         let document = try #require(PDFDocument(url: url))
         #expect(document.pageCount == 1)

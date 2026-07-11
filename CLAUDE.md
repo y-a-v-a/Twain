@@ -19,6 +19,7 @@ Do this before producing implementation code. A few sentences is fine — the go
 ## Print/PDF gotchas
 
 - **`ImageRenderer` needs a warm-up pass, and each pass's draw closure is single-shot.** The first render pass reports a pre-settlement layout (text measured unwrapped — a fraction of the real height), so `DocumentPrinter.makePDFData` discards it and measures on the second pass. Calling a pass's `draw(context)` more than once drops text runs and drifts positions; every drawing operation (break scan, each page) gets its own render pass. Symptoms of regressing this: exported pages start mid-document, or only monospaced text survives.
+- **Waiting for Textual's async syntax highlighting must suspend, not spin.** The highlight `.task` does run under `ImageRenderer` and later passes do reflect it — but only across a real suspension (`await Task.sleep`). A nested `RunLoop.main.run` starves the chain and code prints uncolored. Regression check: `printedCodeKeepsHighlightColorsWhenPrismIsAvailable` in PrintTests.swift (needs `PACKAGE_RESOURCE_BUNDLE_PATH` — see the comment there).
 - **Don't route print output through an intermediate PDF or `NSView` machinery.** Drawing a rendered PDF into a print context (PDF-in-PDF) loses text extractability, `NSHostingView.dataWithPDF` produces an empty shell, and `NSPrintOperation`'s view pagination (`knowsPageRange`/`rectForPage`) mis-places slices of ImageRenderer-backed content. Compose pages directly into a `CGContext` and hand the finished PDF to PDFKit's print operation.
 
 ## Theme gotchas
