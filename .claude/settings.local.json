@@ -1,6 +1,5 @@
 {
   "permissions": {
-    "defaultMode": "auto",
     "allow": [
       "Bash(swift build:*)",
       "Bash(swift test:*)",
@@ -15,7 +14,9 @@
       "WebFetch(domain:swiftpackageindex.com)",
       "WebSearch",
       "Read(//tmp/**)",
-      "Read(//private/tmp/**)"
-    ]
+      "Read(//private/tmp/**)",
+      "Bash(.build/debug/Twain.app/Contents/MacOS/Twain)"
+    ],
+    "defaultMode": "auto"
   }
 }

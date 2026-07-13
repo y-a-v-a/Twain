@@ -34,6 +34,10 @@ BUILD_DIR=".build/${ARCH}-apple-macosx/${CONFIG}"
 
 APP_BUNDLE=".build/$CONFIG/Twain.app"
 mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
+# Remove before copying: overwriting the executable in place reuses its inode, and once
+# the old binary has been launched, the kernel's cached signature for that inode kills
+# the next launch with "Taskgated Invalid Signature" (launchd spawn error 162).
+rm -f "$APP_BUNDLE/Contents/MacOS/Twain"
 cp ".build/$CONFIG/Twain" "$APP_BUNDLE/Contents/MacOS/Twain"
 cp Info.plist "$APP_BUNDLE/Contents/Info.plist"
 cp Twain.icns "$APP_BUNDLE/Contents/Resources/Twain.icns"
@@ -43,6 +47,10 @@ rm -rf "$APP_BUNDLE/Contents/Resources/"*.bundle
 for bundle in "$BUILD_DIR"/*.bundle; do
     cp -r "$bundle" "$APP_BUNDLE/Contents/Resources/"
 done
+
+# Re-sign the assembled bundle so the fresh binary and resources carry a consistent
+# ad-hoc signature.
+codesign --force --sign - "$APP_BUNDLE" 2>/dev/null || true
 
 echo "Built: $APP_BUNDLE"
 

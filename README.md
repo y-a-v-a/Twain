@@ -48,6 +48,8 @@ See `twain --help` for all options.
 | Cmd+0 | Reset font size |
 | Cmd+R | Refresh file from disk (documents also auto-reload on change) |
 | Cmd+Shift+F | Toggle serif font |
+| Cmd+P | Print (the panel's PDF menu covers Save as PDF and friends) |
+| Cmd+Shift+E | Export as PDF |
 
 Font size and font style preferences are saved and restored across app restarts.
 
@@ -76,6 +78,8 @@ the default theme.
 - Persistent font size and style preferences
 - Customizable theming via external JSON — auto-created, editable from Settings, applied live
 - Light and dark mode support
+- Print and PDF export with the on-screen theme: real selectable text, page breaks that
+  never slice a line, code blocks wrapped for paper
 - Multiple window support
 - Scriptable via the `twain://` URL scheme and CLI — agent-friendly by design
 

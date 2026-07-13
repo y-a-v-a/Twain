@@ -16,6 +16,14 @@ private struct FindPreviousActionKey: FocusedValueKey {
     typealias Value = () -> Void
 }
 
+private struct PrintDocumentActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
+private struct ExportPDFActionKey: FocusedValueKey {
+    typealias Value = () -> Void
+}
+
 extension FocusedValues {
     var refresh: (() -> Void)? {
         get { self[RefreshActionKey.self] }
@@ -36,6 +44,16 @@ extension FocusedValues {
         get { self[FindPreviousActionKey.self] }
         set { self[FindPreviousActionKey.self] = newValue }
     }
+
+    var printDocument: (() -> Void)? {
+        get { self[PrintDocumentActionKey.self] }
+        set { self[PrintDocumentActionKey.self] = newValue }
+    }
+
+    var exportPDF: (() -> Void)? {
+        get { self[ExportPDFActionKey.self] }
+        set { self[ExportPDFActionKey.self] = newValue }
+    }
 }
 
 @main
@@ -49,6 +67,7 @@ struct TwainApp: App {
         }
         .commands {
             RefreshCommands()
+            PrintCommands()
             FindCommands()
             FontSizeCommands()
             FontStyleCommands()
@@ -70,6 +89,27 @@ struct RefreshCommands: Commands {
             }
             .keyboardShortcut("r", modifiers: .command)
             .disabled(refresh == nil)
+        }
+    }
+}
+
+struct PrintCommands: Commands {
+    @FocusedValue(\.printDocument) private var printDocument
+    @FocusedValue(\.exportPDF) private var exportPDF
+
+    var body: some Commands {
+        CommandGroup(replacing: .printItem) {
+            Button("Export as PDF…") {
+                exportPDF?()
+            }
+            .keyboardShortcut("e", modifiers: [.command, .shift])
+            .disabled(exportPDF == nil)
+
+            Button("Print…") {
+                printDocument?()
+            }
+            .keyboardShortcut("p", modifiers: .command)
+            .disabled(printDocument == nil)
         }
     }
 }
