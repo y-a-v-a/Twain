@@ -37,6 +37,23 @@ generate-report | twain -       # render stdin
 
 See `twain --help` for all options.
 
+## Packaged builds
+
+Downloadable builds are produced by the [`Package` workflow](.github/workflows/package.yml),
+triggered by hand: **Actions → Package → Run workflow**, enter a version string (e.g. `1.5`).
+The run stamps the version into `Info.plist`, builds a release bundle, and uploads
+`Twain-<version>.zip` as a workflow artifact (GitHub keeps artifacts for 90 days).
+
+These are Apple Silicon (arm64) builds with only an ad-hoc signature — no Apple
+Developer ID, not notarized — so Gatekeeper refuses a downloaded copy by default.
+After unzipping, either clear the quarantine flag:
+
+```bash
+xattr -d com.apple.quarantine Twain.app
+```
+
+or attempt to open it once and allow it via **System Settings → Privacy & Security → Open Anyway**.
+
 ## Keyboard Shortcuts
 
 | Shortcut | Action |

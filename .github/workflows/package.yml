@@ -7,16 +7,13 @@ on:
         description: 'Version string for this build (e.g. 1.4)'
         required: true
         type: string
-  # Temporary trigger to test this workflow before merge — removed before PR review.
-  push:
-    branches: [package-workflow]
 
 jobs:
   package:
     name: Build & package Twain.app
     runs-on: macos-15
     env:
-      VERSION: ${{ inputs.version || '0.0.0-test' }}
+      VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@v7
 
@@ -40,6 +37,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Twain-${{ inputs.version || '0.0.0-test' }}
+          name: Twain-${{ inputs.version }}
           path: Twain-*.zip
           if-no-files-found: error
