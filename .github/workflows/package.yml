@@ -18,7 +18,7 @@ jobs:
     env:
       VERSION: ${{ inputs.version || '0.0.0-test' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Stamp version into Info.plist
         run: |
@@ -38,7 +38,7 @@ jobs:
         run: ditto -c -k --norsrc --noextattr --noqtn --keepParent .build/release/Twain.app "Twain-$VERSION.zip"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Twain-${{ inputs.version || '0.0.0-test' }}
           path: Twain-*.zip
