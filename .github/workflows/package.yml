@@ -1,0 +1,42 @@
+name: Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version string for this build (e.g. 1.4)'
+        required: true
+        type: string
+
+jobs:
+  package:
+    name: Build & package Twain.app
+    runs-on: macos-15
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Stamp version into Info.plist
+        run: |
+          /usr/libexec/PlistBuddy \
+            -c "Set :CFBundleShortVersionString $VERSION" \
+            -c "Set :CFBundleVersion $VERSION" \
+            Info.plist
+
+      - name: Build release app bundle
+        run: ./build.sh --release
+
+      # ditto preserves executable bits and bundle structure; uploading the bare
+      # .app would strip permissions (actions/upload-artifact limitation).
+      # --norsrc/--noextattr keep AppleDouble (._*) entries out of the zip: Info-ZIP
+      # unzip extracts those as literal files inside the bundle, breaking its seal.
+      - name: Zip app bundle
+        run: ditto -c -k --norsrc --noextattr --noqtn --keepParent .build/release/Twain.app "Twain-$VERSION.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Twain-${{ inputs.version }}
+          path: Twain-*.zip
+          if-no-files-found: error
