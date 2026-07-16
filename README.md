@@ -162,6 +162,10 @@ they take a few seconds.
 - Swift Package Manager
 - ~2MB release binary
 
+## License
+
+[MIT](LICENSE)
+
 ---
 
 © 2026 Vincent Bruijn
