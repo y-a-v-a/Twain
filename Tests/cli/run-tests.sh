@@ -89,23 +89,30 @@ printf '# hi\n' > "$WORK/docs/a.md"
 printf '# hi\n' > "$WORK/docs/b.md"
 printf '# hi\n' > "$WORK/docs/release notes.md"
 
+# The CLI resolves the installed app bundle by path and refuses to run without
+# one. Point HOME at the sandbox and provide a stub bundle so resolution is
+# deterministic on any machine — including Linux CI, where no real app exists.
+export HOME="$WORK"
+APP_PATH="$WORK/Applications/Twain.app"
+mkdir -p "$APP_PATH"
+
 cd "$WORK"
 
 # --- Opening files -----------------------------------------------------------
 
 run_cli docs/a.md
-assert_log_line "opens a file with an absolute path" \
-    "OPEN: -a Twain $WORK/docs/a.md"
+assert_log_line "opens a file by app path with an absolute file path" \
+    "OPEN: -a $APP_PATH $WORK/docs/a.md"
 
 run_cli docs/a.md docs/b.md
 assert_log_line_count "opens each listed file" 2
 
 run_cli -g "docs/release notes.md"
 assert_log_line "background open passes -g and handles spaces in paths" \
-    "OPEN: -g -a Twain $WORK/docs/release notes.md"
+    "OPEN: -g -a $APP_PATH $WORK/docs/release notes.md"
 
 run_cli
-assert_log_line "no arguments just opens the app" "OPEN: -a Twain"
+assert_log_line "no arguments just opens the app" "OPEN: -a $APP_PATH"
 
 # --- Find --------------------------------------------------------------------
 
@@ -114,7 +121,7 @@ assert_log_contains "find+file goes through twain://open" \
     "twain://open?file=$WORK/docs/a.md"
 assert_log_contains "find query is percent-encoded byte-wise (UTF-8, &, space)" \
     "search=Phase%202%20%26%20m%C3%A1s"
-assert_log_line "app is launched before the URL is sent" "OPEN: -g -a Twain"
+assert_log_line "app is launched before the URL is sent" "OPEN: -g -a $APP_PATH"
 
 run_cli -g --find hello docs/a.md
 assert_log_contains "background find adds activate=0" "&activate=0"
@@ -137,7 +144,10 @@ assert_log_line "refresh with a file targets it" \
 # --- Stdin -------------------------------------------------------------------
 
 printf '# from stdin\n' | run_cli -
-STDIN_FILE=$(sed -n 's/^OPEN: -a Twain //p' "$WORK/open.log")
+# Strip the exact "OPEN: -a <app path> " prefix with pattern quoting — the app
+# path contains characters sed would treat as syntax.
+STDIN_FILE=$(head -1 "$WORK/open.log")
+STDIN_FILE=${STDIN_FILE#"OPEN: -a $APP_PATH "}
 case "$STDIN_FILE" in
     *.md) ok "stdin lands in a .md temp file" ;;
     *)    fail "stdin lands in a .md temp file" "opened: $STDIN_FILE" ;;
