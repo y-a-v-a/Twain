@@ -104,7 +104,15 @@ done
 
 Inline specimens survive in the wild too: run `twain test.md`, mind the `--help` flag, and never trust a program that won't print its version.
 
-## Chapter VI — Unfinished Business
+## Chapter VI — An Illustration, at Considerable Expense
+
+The publisher insisted on a frontispiece, claiming no book sells without one. Here it is, and I am told it cost more than the words:
+
+![The Twain.md social preview — a dark card announcing a markdown viewer for macOS](social-preview.png)
+
+*The engraver has done fine work, though he spelled nothing wrong, which is unusual for the trade.*
+
+## Chapter VII — Unfinished Business
 
 Every honest ledger has a page of chores:
 

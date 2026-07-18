@@ -225,6 +225,83 @@ struct DocumentPrinterTests {
         #expect(saturated > 100)
     }
 
+    // Document-relative images must resolve against the job's baseURL and survive into the
+    // export as drawn pixels, not just alt text.
+    @Test func exportedPDFRendersDocumentRelativeImages() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("twain-image-test-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        // A solid saturated-red square; the pixel scan below hunts for exactly this color,
+        // which nothing else in the default light print theme produces.
+        try solidRedPNGData(size: 64).write(to: directory.appendingPathComponent("marker.png"))
+
+        var job = makeJob(markdown: """
+        # Illustrated Section
+
+        ![a red marker square](marker.png)
+
+        Closing paragraph after the image.
+        """)
+        job.baseURL = directory.appendingPathComponent("doc.md")
+
+        let data = try #require(await DocumentPrinter.makePDFData(
+            job: job,
+            paperSize: CGSize(width: 595, height: 842)
+        ))
+
+        // The export must embed the image bytes, not reference the file: delete the source
+        // PNG before reading the PDF, so the pixel scan below can only hit embedded data.
+        try FileManager.default.removeItem(at: directory.appendingPathComponent("marker.png"))
+
+        let document = try #require(PDFDocument(data: data))
+        let page = try #require(document.page(at: 0))
+
+        // Surrounding text stays extractable alongside the image.
+        let text = page.string ?? ""
+        #expect(text.contains("Illustrated Section"))
+        #expect(text.contains("Closing paragraph"))
+
+        let bounds = page.bounds(for: .mediaBox)
+        let width = Int(bounds.width), height = Int(bounds.height)
+        let context = try #require(CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ))
+        context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        page.draw(with: .mediaBox, to: context)
+        let image = try #require(context.makeImage())
+        let pixelData = try #require(image.dataProvider?.data)
+        let bytes = try #require(CFDataGetBytePtr(pixelData))
+        let bytesPerPixel = image.bitsPerPixel / 8
+
+        var red = 0
+        for y in 0..<image.height {
+            for x in 0..<image.width {
+                let p = bytes + y * image.bytesPerRow + x * bytesPerPixel
+                if p[0] > 200, p[1] < 80, p[2] < 80 { red += 1 }
+            }
+        }
+        // The 64pt square rasterizes at 1×; well over half its ~4096 pixels must be red.
+        #expect(red > 2000)
+    }
+
+    private func solidRedPNGData(size: Int) throws -> Data {
+        let context = try #require(CGContext(
+            data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ))
+        context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: size, height: size))
+        let image = try #require(context.makeImage())
+        let rep = NSBitmapImageRep(cgImage: image)
+        return try #require(rep.representation(using: .png, properties: [:]))
+    }
+
     @Test func exportHandlesEmptyDocument() async throws {
         let url = tempPDFURL()
         defer { try? FileManager.default.removeItem(at: url) }
