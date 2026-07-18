@@ -72,7 +72,9 @@ EOF
 }
 
 # Percent-encode a string for use as a twain:// query value. Iterates bytes
-# (LC_ALL=C) so multibyte UTF-8 input is encoded correctly.
+# (LC_ALL=C) so multibyte UTF-8 input is encoded correctly. The & 255 mask
+# matters: bash 3.2 (macOS /bin/bash) sign-extends bytes >= 0x80 in the
+# "'$c" ordinal conversion, which would print %FFFFFFFFFFFFFFC3 for %C3.
 urlencode() (
     LC_ALL=C
     s="$1"
@@ -82,7 +84,7 @@ urlencode() (
         c="${s:$i:1}"
         case "$c" in
             [a-zA-Z0-9._~/-]) out="$out$c" ;;
-            *) out="$out$(printf '%%%02X' "'$c")" ;;
+            *) out="$out$(printf '%%%02X' "$(( $(printf '%d' "'$c") & 255 ))")" ;;
         esac
         i=$((i + 1))
     done
