@@ -10,6 +10,9 @@ import UniformTypeIdentifiers
 /// captured as plain values so the print pipeline doesn't reach back into live view state.
 struct PrintJob {
     var markdown: String
+    /// The document's own URL; relative image paths resolve against it. Nil (e.g. an
+    /// untitled window) leaves relative images unresolved — absolute URLs still work.
+    var baseURL: URL?
     var theme: Theme
     var fontSize: Double
     var useSerifFont: Bool
@@ -22,8 +25,10 @@ struct PrintJob {
 /// The same parse the document windows use (Apple's Markdown parser plus Twain's task-list
 /// marker expansion), without the search-highlight overlay.
 struct PrintMarkdownParser: MarkupParser {
+    var baseURL: URL?
+
     func attributedString(for input: String) throws -> AttributedString {
-        try AttributedStringMarkdownParser(baseURL: nil)
+        try AttributedStringMarkdownParser(baseURL: baseURL)
             .attributedString(for: input)
             .expandingTaskListMarkers()
     }
@@ -180,16 +185,23 @@ enum DocumentPrinter {
         //   break scan and every page each run in their own render pass.
         renderer.render { _, _ in }
 
-        // Textual tokenizes code blocks for syntax highlighting in an async `.task`, which
-        // ImageRenderer does host — but only if we actually suspend (a nested RunLoop.run
-        // starves the chain and the colors never land). Wait a beat scaled to the number of
-        // fenced blocks so the passes below draw highlighted code; stragglers in enormous
-        // documents degrade to plain text, never broken layout.
+        // Textual tokenizes code blocks for syntax highlighting and resolves image
+        // attachments in async `.task`s, which ImageRenderer does host — but only if we
+        // actually suspend (a nested RunLoop.run starves the chain and the work never
+        // lands). Wait a beat scaled to the amount of async work so the passes below see
+        // the settled content; this must complete before the measurement pass, or images
+        // resolving later would shift content against the page breaks computed here.
+        // Stragglers (enormous documents, slow remote images) degrade to plain text or a
+        // missing image, never broken layout.
         let fences = job.markdown.components(separatedBy: "```").count - 1
         let codeBlocks = max(fences / 2, job.markdown.contains("~~~") ? 1 : 0)
-        if codeBlocks > 0 {
-            let wait = min(0.5 + 0.05 * Double(codeBlocks), 3.0)
-            try? await Task.sleep(for: .seconds(wait))
+        let images = job.markdown.components(separatedBy: "![").count - 1
+        let wait = max(
+            codeBlocks > 0 ? 0.5 + 0.05 * Double(codeBlocks) : 0,
+            images > 0 ? 0.5 + 0.1 * Double(images) : 0
+        )
+        if wait > 0 {
+            try? await Task.sleep(for: .seconds(min(wait, 3.0)))
         }
 
         var contentSize = CGSize.zero
@@ -310,7 +322,7 @@ enum DocumentPrinter {
         let font: Font = family.map { .custom($0, size: job.fontSize) }
             ?? .system(size: job.fontSize)
 
-        return StructuredText(job.markdown, parser: PrintMarkdownParser())
+        return StructuredText(job.markdown, parser: PrintMarkdownParser(baseURL: job.baseURL))
             .font(font)
             .fontDesign(job.useSerifFont && theme.serifFontFamily == nil ? .serif : .default)
             .textual.highlighterTheme(theme.highlighterTheme)

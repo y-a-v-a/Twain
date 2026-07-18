@@ -5,7 +5,14 @@ import Textual
 
 @MainActor
 final class HighlightingMarkdownCache {
-    private let baseParser = AttributedStringMarkdownParser(baseURL: nil)
+    /// The document's own URL. Foundation's parser resolves relative image destinations
+    /// against it at parse time, so document-relative images come out as absolute file URLs
+    /// that Textual's default attachment loader can fetch.
+    private let baseParser: AttributedStringMarkdownParser
+
+    init(baseURL: URL? = nil) {
+        baseParser = AttributedStringMarkdownParser(baseURL: baseURL)
+    }
 
     private(set) var markdown: String = ""
     private(set) var attributedString = AttributedString()

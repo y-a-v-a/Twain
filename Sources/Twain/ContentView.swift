@@ -38,7 +38,7 @@ struct ContentView: View {
         _searchState = State(
             initialValue: SearchState(layout: theme.blockLayout(fontSize: CGFloat(initialFontSize)))
         )
-        _searchCache = State(initialValue: HighlightingMarkdownCache())
+        _searchCache = State(initialValue: HighlightingMarkdownCache(baseURL: fileURL))
     }
 
     private var font: Font {
@@ -176,6 +176,7 @@ struct ContentView: View {
     private var printJob: PrintJob {
         PrintJob(
             markdown: text,
+            baseURL: fileURL,
             theme: theme,
             fontSize: fontSize,
             useSerifFont: useSerifFont,

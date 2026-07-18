@@ -250,3 +250,26 @@ struct SearchStateTests {
         #expect(narrowFraction > wideFraction)
     }
 }
+
+@MainActor
+struct HighlightingMarkdownCacheTests {
+    // The on-screen parse must resolve document-relative image paths to absolute file URLs,
+    // or Textual's attachment loader has nothing it can load and images silently vanish.
+    @Test func relativeImagePathsResolveAgainstBaseURL() throws {
+        let cache = HighlightingMarkdownCache(
+            baseURL: URL(fileURLWithPath: "/tmp/docs/readme.md")
+        )
+        try cache.prepare(markdown: "![alt text](images/pic.png)")
+
+        let urls = cache.attributedString.runs.compactMap(\.imageURL)
+        #expect(urls.map(\.absoluteURL.path) == ["/tmp/docs/images/pic.png"])
+    }
+
+    @Test func withoutBaseURLRelativeImagePathsStayRelative() throws {
+        let cache = HighlightingMarkdownCache()
+        try cache.prepare(markdown: "![alt text](images/pic.png)")
+
+        let urls = cache.attributedString.runs.compactMap(\.imageURL)
+        #expect(urls.map(\.relativeString) == ["images/pic.png"])
+    }
+}
