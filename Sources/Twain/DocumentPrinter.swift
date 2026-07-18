@@ -34,6 +34,44 @@ struct PrintMarkdownParser: MarkupParser {
     }
 }
 
+// MARK: - Attachment load tracking
+
+/// Thread-safe tally of completed attachment loads (successes and failures alike).
+final class AttachmentLoadCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    func increment() {
+        lock.lock()
+        defer { lock.unlock() }
+        count += 1
+    }
+
+    var value: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return count
+    }
+}
+
+/// Wraps an attachment loader and counts every finished load, so the print pipeline can
+/// wait until each image reference has actually resolved (or failed) instead of guessing
+/// with a fixed sleep — a slow load landing between the measurement pass and the page
+/// draws would shift content against the computed page breaks.
+struct CountingAttachmentLoader<Base: AttachmentLoader>: AttachmentLoader {
+    let base: Base
+    let counter: AttachmentLoadCounter
+
+    func attachment(
+        for url: URL,
+        text: String,
+        environment: ColorEnvironmentValues
+    ) async throws -> Base.Attachment {
+        defer { counter.increment() }
+        return try await base.attachment(for: url, text: text, environment: environment)
+    }
+}
+
 // MARK: - Pagination
 
 /// Chooses page-break positions in content coordinates (y grows downward, 0 = content top).
@@ -173,7 +211,11 @@ enum DocumentPrinter {
         let bodyHeight = paperSize.height - 2 * margin
         guard bodyWidth > 0, bodyHeight > 0 else { return nil }
 
-        let renderer = ImageRenderer(content: AnyView(printContent(job: job, width: bodyWidth)))
+        let counter = AttachmentLoadCounter()
+        let imageLoader = CountingAttachmentLoader(base: URLAttachmentLoader.image(), counter: counter)
+        let renderer = ImageRenderer(
+            content: AnyView(printContent(job: job, width: bodyWidth, imageLoader: imageLoader))
+        )
         renderer.proposedSize = ProposedViewSize(width: bodyWidth, height: nil)
 
         // Two ImageRenderer quirks shape the structure here, both found empirically:
@@ -185,23 +227,35 @@ enum DocumentPrinter {
         //   break scan and every page each run in their own render pass.
         renderer.render { _, _ in }
 
-        // Textual tokenizes code blocks for syntax highlighting and resolves image
-        // attachments in async `.task`s, which ImageRenderer does host — but only if we
-        // actually suspend (a nested RunLoop.run starves the chain and the work never
-        // lands). Wait a beat scaled to the amount of async work so the passes below see
-        // the settled content; this must complete before the measurement pass, or images
-        // resolving later would shift content against the page breaks computed here.
-        // Stragglers (enormous documents, slow remote images) degrade to plain text or a
-        // missing image, never broken layout.
+        // Textual tokenizes code blocks for syntax highlighting in an async `.task`, which
+        // ImageRenderer does host — but only if we actually suspend (a nested RunLoop.run
+        // starves the chain and the colors never land). Wait a beat scaled to the number of
+        // fenced blocks so the passes below draw highlighted code; stragglers in enormous
+        // documents degrade to plain text, never broken layout.
         let fences = job.markdown.components(separatedBy: "```").count - 1
         let codeBlocks = max(fences / 2, job.markdown.contains("~~~") ? 1 : 0)
-        let images = job.markdown.components(separatedBy: "![").count - 1
-        let wait = max(
-            codeBlocks > 0 ? 0.5 + 0.05 * Double(codeBlocks) : 0,
-            images > 0 ? 0.5 + 0.1 * Double(images) : 0
-        )
-        if wait > 0 {
-            try? await Task.sleep(for: .seconds(min(wait, 3.0)))
+        if codeBlocks > 0 {
+            let wait = min(0.5 + 0.05 * Double(codeBlocks), 3.0)
+            try? await Task.sleep(for: .seconds(wait))
+        }
+
+        // Image attachments load in an async `.task` too, and they change layout when they
+        // land — a load finishing after the measurement pass below would shift content
+        // against the computed page breaks. Rather than guessing with a fixed sleep, count
+        // the document's image references from the same parse the renderer uses and suspend
+        // until the counting loader reports every one resolved or failed, with a deadline
+        // so a hung remote image degrades to a missing image, never broken layout.
+        let expectedImages = (try? PrintMarkdownParser(baseURL: job.baseURL)
+            .attributedString(for: job.markdown))
+            .map { parsed in parsed.runs.count(where: { $0.imageURL != nil }) } ?? 0
+        if expectedImages > 0 {
+            let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+            while counter.value < expectedImages, ContinuousClock.now < deadline {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            // The counter ticks when the loads finish; give the resolved string one more
+            // beat to make it through Textual's task group and back into the view.
+            try? await Task.sleep(for: .milliseconds(200))
         }
 
         var contentSize = CGSize.zero
@@ -316,13 +370,18 @@ enum DocumentPrinter {
     /// on-screen stack (keep the modifiers in sync), minus search, with overflowing code blocks
     /// wrapped instead of scrolled, and always in the light color scheme — printing a dark
     /// theme's background would be unreadable on paper.
-    static func printContent(job: PrintJob, width: CGFloat) -> some View {
+    static func printContent(
+        job: PrintJob,
+        width: CGFloat,
+        imageLoader: some AttachmentLoader
+    ) -> some View {
         let theme = job.theme
         let family = job.useSerifFont ? theme.serifFontFamily : theme.sansSerifFontFamily
         let font: Font = family.map { .custom($0, size: job.fontSize) }
             ?? .system(size: job.fontSize)
 
         return StructuredText(job.markdown, parser: PrintMarkdownParser(baseURL: job.baseURL))
+            .textual.imageAttachmentLoader(imageLoader)
             .font(font)
             .fontDesign(job.useSerifFont && theme.serifFontFamily == nil ? .serif : .default)
             .textual.highlighterTheme(theme.highlighterTheme)
