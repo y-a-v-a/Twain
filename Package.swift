@@ -8,7 +8,7 @@ let package = Package(
         .macOS(.v15)
     ],
     dependencies: [
-        .package(url: "https://github.com/gonzalezreal/textual", from: "0.3.1")
+        .package(url: "https://github.com/gonzalezreal/textual", from: "0.5.0")
     ],
     targets: [
         .executableTarget(
