@@ -108,17 +108,20 @@ referenced by the document aren't shown (the extension may only read the preview
 
 ## Features
 
-- Live reload: open documents follow the file on disk (atomic saves included)
-- Native syntax highlighting in code blocks (automatic language detection)
-- Sans-serif and serif font options
-- Persistent font size and style preferences
-- Customizable theming via external JSON — auto-created, editable from Settings, applied live
-- Light and dark mode support
-- Print and PDF export with the on-screen theme: real selectable text, page breaks that
+- 🔄 Live reload: open documents follow the file on disk (atomic saves included)
+- 🌈 Native syntax highlighting in code blocks (automatic language detection)
+- 🔤 Sans-serif and serif font options
+- 💾 Persistent font size and style preferences
+- 🎨 Customizable theming via external JSON — auto-created, editable from Settings, applied live
+- 🌗 Light and dark mode support
+- 🖨️ Print and PDF export with the on-screen theme: real selectable text, page breaks that
   never slice a line, code blocks wrapped for paper
-- Multiple window support
-- Quick Look: select a Markdown file in Finder, press space, get Twain's rendering
-- Scriptable via the `twain://` URL scheme and CLI — agent-friendly by design
+- 🪟 Multiple window support
+- 👀 Quick Look: select a Markdown file in Finder, press space, get Twain's rendering
+- 🔗 Scriptable via the `twain://` URL scheme and CLI — agent-friendly by design
+- 🤖 Agent skill: a harness-agnostic [skill](https://agentskills.io) (`skills/twain-markdown-viewer/`)
+  that teaches coding agents to open Markdown files in Twain
+- 📜 AppleScript support: introspect and drive open documents from scripts via `osascript`
 
 ## Agents & Automation
 
