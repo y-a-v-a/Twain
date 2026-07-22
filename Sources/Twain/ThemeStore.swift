@@ -1,4 +1,5 @@
 import Foundation
+import TwainRendering
 import Combine
 
 /// Loads the theme and watches `~/.config/twain/theme.json`, re-publishing whenever the

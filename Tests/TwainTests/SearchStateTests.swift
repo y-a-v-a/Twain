@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 @testable import Twain
+@testable import TwainRendering
 
 @MainActor
 struct SearchStateTests {

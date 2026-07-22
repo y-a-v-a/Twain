@@ -1,4 +1,5 @@
 import AppKit
+import TwainRendering
 import PDFKit
 import SwiftUI
 import Textual

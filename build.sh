@@ -48,8 +48,25 @@ for bundle in "$BUILD_DIR"/*.bundle; do
     cp -r "$bundle" "$APP_BUNDLE/Contents/Resources/"
 done
 
+# Quick Look preview extension: hand-assembled appex (SPM can't build .appex
+# targets). The binary's entry point is NSExtensionMain, set at link time in
+# Package.swift. Signed before the outer app, sandboxed via entitlements —
+# unsandboxed app extensions are not loaded.
+APPEX="$APP_BUNDLE/Contents/PlugIns/TwainQuickLook.appex"
+rm -rf "$APPEX"
+mkdir -p "$APPEX/Contents/MacOS" "$APPEX/Contents/Resources"
+cp "$BUILD_DIR/TwainQuickLook" "$APPEX/Contents/MacOS/TwainQuickLook"
+cp quicklook/Info.plist "$APPEX/Contents/Info.plist"
+# The appex is its own main bundle, so it needs its own copy of the SPM
+# resource bundles (Prism.js for code highlighting).
+for bundle in "$BUILD_DIR"/*.bundle; do
+    cp -r "$bundle" "$APPEX/Contents/Resources/"
+done
+codesign --force --sign - --entitlements quicklook/TwainQuickLook.entitlements "$APPEX" 2>/dev/null || true
+
 # Re-sign the assembled bundle so the fresh binary and resources carry a consistent
-# ad-hoc signature.
+# ad-hoc signature. Must come after the appex is signed: adding PlugIns content
+# invalidates the outer seal.
 codesign --force --sign - "$APP_BUNDLE" 2>/dev/null || true
 
 echo "Built: $APP_BUNDLE"

@@ -1,4 +1,5 @@
 import SwiftUI
+import TwainRendering
 import Textual
 
 struct ContentView: View {

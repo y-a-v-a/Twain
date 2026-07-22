@@ -1,108 +1,108 @@
 import SwiftUI
 import Textual
 
-struct ThemeColor: Codable, Equatable {
-    var light: String
-    var dark: String
+public struct ThemeColor: Codable, Equatable, Sendable {
+    public var light: String
+    public var dark: String
 
-    var dynamicColor: DynamicColor {
+    public var dynamicColor: DynamicColor {
         DynamicColor(light: Color(hex: light), dark: Color(hex: dark))
     }
 }
 
-struct Theme: Codable, Equatable {
-    var colors: ThemeColors
-    var headings: ThemeHeadings
-    var codeBlock: ThemeCodeBlock
-    var blockQuote: ThemeBlockQuote
-    var paragraph: ThemeParagraph
-    var table: ThemeTable?
-    var list: ThemeList?
-    var layout: ThemeLayout?
-    var serifFontFamily: String?
-    var sansSerifFontFamily: String?
+public struct Theme: Codable, Equatable, Sendable {
+    public var colors: ThemeColors
+    public var headings: ThemeHeadings
+    public var codeBlock: ThemeCodeBlock
+    public var blockQuote: ThemeBlockQuote
+    public var paragraph: ThemeParagraph
+    public var table: ThemeTable?
+    public var list: ThemeList?
+    public var layout: ThemeLayout?
+    public var serifFontFamily: String?
+    public var sansSerifFontFamily: String?
 
-    struct ThemeColors: Codable, Equatable {
-        var primary: ThemeColor
-        var secondary: ThemeColor
-        var tertiary: ThemeColor
-        var background: ThemeColor
-        var secondaryBackground: ThemeColor
-        var link: ThemeColor
-        var border: ThemeColor
-        var divider: ThemeColor
+    public struct ThemeColors: Codable, Equatable, Sendable {
+        public var primary: ThemeColor
+        public var secondary: ThemeColor
+        public var tertiary: ThemeColor
+        public var background: ThemeColor
+        public var secondaryBackground: ThemeColor
+        public var link: ThemeColor
+        public var border: ThemeColor
+        public var divider: ThemeColor
     }
 
-    struct ThemeHeadings: Codable, Equatable {
-        var fontScales: [CGFloat]
-        var fontWeight: String
+    public struct ThemeHeadings: Codable, Equatable, Sendable {
+        public var fontScales: [CGFloat]
+        public var fontWeight: String
         // Optional: absent in theme files predating these keys.
-        var topSpacing: CGFloat?
-        var bottomSpacing: CGFloat?
+        public var topSpacing: CGFloat?
+        public var bottomSpacing: CGFloat?
 
         static let defaultTopSpacing: CGFloat = 24
         static let defaultBottomSpacing: CGFloat = 16
     }
 
-    struct ThemeCodeBlock: Codable, Equatable {
-        var background: ThemeColor
-        var cornerRadius: CGFloat
-        var padding: CGFloat
-        var fontScale: CGFloat
+    public struct ThemeCodeBlock: Codable, Equatable, Sendable {
+        public var background: ThemeColor
+        public var cornerRadius: CGFloat
+        public var padding: CGFloat
+        public var fontScale: CGFloat
         // Optional: absent in theme files predating this key.
-        var lineSpacingScale: CGFloat?
+        public var lineSpacingScale: CGFloat?
 
         static let defaultLineSpacingScale: CGFloat = 0.225
     }
 
-    struct ThemeTable: Codable, Equatable {
-        var cellVerticalPadding: CGFloat
-        var cellHorizontalPadding: CGFloat
+    public struct ThemeTable: Codable, Equatable, Sendable {
+        public var cellVerticalPadding: CGFloat
+        public var cellHorizontalPadding: CGFloat
 
         static let fallback = ThemeTable(cellVerticalPadding: 6, cellHorizontalPadding: 13)
     }
 
-    struct ThemeList: Codable, Equatable {
+    public struct ThemeList: Codable, Equatable, Sendable {
         /// Horizontal gap between a list marker and its item content, in font-relative units.
-        var markerSpacing: CGFloat
+        public var markerSpacing: CGFloat
         /// Vertical gap between list items, in font-relative units.
         /// Optional: absent in theme files predating this key.
-        var itemSpacing: CGFloat?
+        public var itemSpacing: CGFloat?
 
         static let defaultItemSpacing: CGFloat = 0.25
-        var resolvedItemSpacing: CGFloat { itemSpacing ?? Self.defaultItemSpacing }
+        public var resolvedItemSpacing: CGFloat { itemSpacing ?? Self.defaultItemSpacing }
 
         static let fallback = ThemeList(markerSpacing: 0.5, itemSpacing: defaultItemSpacing)
     }
 
-    struct ThemeBlockQuote: Codable, Equatable {
-        var borderColor: ThemeColor
-        var borderWidth: CGFloat
+    public struct ThemeBlockQuote: Codable, Equatable, Sendable {
+        public var borderColor: ThemeColor
+        public var borderWidth: CGFloat
     }
 
-    struct ThemeParagraph: Codable, Equatable {
-        var lineSpacingScale: CGFloat
-        var bottomSpacing: CGFloat
+    public struct ThemeParagraph: Codable, Equatable, Sendable {
+        public var lineSpacingScale: CGFloat
+        public var bottomSpacing: CGFloat
     }
 
-    struct ThemeLayout: Codable, Equatable {
-        var contentInset: CGFloat
+    public struct ThemeLayout: Codable, Equatable, Sendable {
+        public var contentInset: CGFloat
     }
 
     /// Padding around the rendered content. Falls back to the built-in default when a
     /// custom `theme.json` predates the `layout` section.
-    var contentInset: CGFloat { layout?.contentInset ?? Theme.defaultContentInset }
+    public var contentInset: CGFloat { layout?.contentInset ?? Theme.defaultContentInset }
 
     static let defaultContentInset: CGFloat = 32
 
     /// Sections added after the first release; a custom `theme.json` predating them
     /// must still decode, so they resolve to their fallbacks here.
-    var resolvedTable: ThemeTable { table ?? .fallback }
-    var resolvedList: ThemeList { list ?? .fallback }
+    public var resolvedTable: ThemeTable { table ?? .fallback }
+    public var resolvedList: ThemeList { list ?? .fallback }
 }
 
 extension Theme {
-    static let `default` = Theme(
+    public static let `default` = Theme(
         colors: ThemeColors(
             primary: ThemeColor(light: "#060606", dark: "#fbfbfc"),
             secondary: ThemeColor(light: "#6b6e7b", dark: "#9294a0"),
@@ -146,7 +146,7 @@ extension Theme {
     /// `TWAIN_CONFIG_DIR` environment variable overrides the directory so test harnesses
     /// can isolate the app from the real `~/.config/twain` (a plain `$HOME` override is
     /// not enough — `homeDirectoryForCurrentUser` ignores it).
-    static let userThemeURL: URL = {
+    public static let userThemeURL: URL = {
         if let dir = ProcessInfo.processInfo.environment["TWAIN_CONFIG_DIR"], !dir.isEmpty {
             return URL(fileURLWithPath: dir).appendingPathComponent("theme.json")
         }
@@ -154,7 +154,7 @@ extension Theme {
             .appendingPathComponent(".config/twain/theme.json")
     }()
 
-    static func load() -> Theme {
+    public static func load() -> Theme {
         guard FileManager.default.fileExists(atPath: userThemeURL.path),
               let data = try? Data(contentsOf: userThemeURL),
               let theme = try? JSONDecoder().decode(Theme.self, from: data)
@@ -170,7 +170,7 @@ extension Theme {
     /// about survive a rewrite. A file that doesn't decode as a `Theme` (broken, or mid-edit)
     /// is left untouched. Errors are intentionally swallowed to match `load()`'s tolerant
     /// behavior.
-    static func syncUserThemeFile(at url: URL = userThemeURL) {
+    public static func syncUserThemeFile(at url: URL = userThemeURL) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         guard let defaultData = try? encoder.encode(Theme.default),

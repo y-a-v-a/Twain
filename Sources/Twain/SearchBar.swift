@@ -1,4 +1,5 @@
 import SwiftUI
+import TwainRendering
 import Textual
 
 // MARK: - Highlighting Markdown Parser

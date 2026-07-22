@@ -1,4 +1,5 @@
 import SwiftUI
+import TwainRendering
 import AppKit
 
 /// App-level appearance override, persisted in UserDefaults. `.system` follows the OS setting;
