@@ -125,6 +125,18 @@ open -g "twain://open?file=/tmp/plan.md&search=Phase%202"
 The installed `twain` CLI wraps all of this (`--refresh`, `--find`, `--background`, stdin via
 `twain -`) so agents don't need to build URLs by hand.
 
+### Agent skill
+
+`skills/twain-markdown-viewer/` is a harness-agnostic [agent skill](https://agentskills.io)
+that teaches a coding agent to open Markdown files in Twain when the user asks to *open,
+show, view, or preview* one (but not when asked to *read* or *study* it — that's the
+agent's job). Install it by symlinking the directory into your agent's skills location,
+e.g. for Claude Code:
+
+```bash
+ln -s "$(pwd)/skills/twain-markdown-viewer" ~/.claude/skills/
+```
+
 ### AppleScript
 
 Where the URL scheme is write-only, AppleScript adds the introspection half — ask Twain what
