@@ -18,6 +18,17 @@ let package = Package(
             ],
             path: "Sources/Twain"
         ),
+        // Quick Look preview extension (spike). Built as a plain executable;
+        // the appex entry point is Foundation's NSExtensionMain, swapped in
+        // at link time — see quicklook/assemble-spike.sh.
+        .executableTarget(
+            name: "TwainQuickLook",
+            path: "Sources/TwainQuickLook",
+            linkerSettings: [
+                .linkedFramework("Quartz"),
+                .unsafeFlags(["-Xlinker", "-e", "-Xlinker", "_NSExtensionMain"])
+            ]
+        ),
         .testTarget(
             name: "TwainTests",
             dependencies: ["Twain"],
