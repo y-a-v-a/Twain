@@ -1,4 +1,5 @@
 import SwiftUI
+import TwainRendering
 
 private struct RefreshActionKey: FocusedValueKey {
     typealias Value = () -> Void

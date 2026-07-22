@@ -87,6 +87,22 @@ repo's `theme.json` for all available options. Theme files stay forward-compatib
 you omit falls back to its built-in default, and if the file is missing or invalid Twain uses
 the default theme.
 
+## Quick Look
+
+Twain ships a Quick Look extension: select a `.md` file in Finder, press space, and the
+preview renders with Twain's default theme — headings, tables, syntax-highlighted code
+and all. It registers automatically the first time you launch the installed app. If
+previews still show plain text, enable it under **System Settings → General →
+Login Items & Extensions → Quick Look**, or check registration with:
+
+```bash
+pluginkit -m -p com.apple.quicklook.preview | grep twain
+```
+
+Two limitations, both imposed by the extension sandbox: previews always use the built-in
+default theme (the extension can't read `~/.config/twain/theme.json`), and images
+referenced by the document aren't shown (the extension may only read the previewed file).
+
 ## Features
 
 - Live reload: open documents follow the file on disk (atomic saves included)
@@ -98,6 +114,7 @@ the default theme.
 - Print and PDF export with the on-screen theme: real selectable text, page breaks that
   never slice a line, code blocks wrapped for paper
 - Multiple window support
+- Quick Look: select a Markdown file in Finder, press space, get Twain's rendering
 - Scriptable via the `twain://` URL scheme and CLI — agent-friendly by design
 
 ## Agents & Automation

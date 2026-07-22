@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 @testable import Twain
+@testable import TwainRendering
 
 struct ThemeTests {
     // The seed written by `syncUserThemeFile()` must always decode back into a valid

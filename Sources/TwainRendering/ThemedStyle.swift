@@ -3,10 +3,10 @@ import Textual
 
 // MARK: - Themed Heading Style
 
-struct ThemedHeadingStyle: StructuredText.HeadingStyle {
+public struct ThemedHeadingStyle: StructuredText.HeadingStyle {
     let theme: Theme
 
-    func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration) -> some View {
         let layout = theme.styleLayout
         let level = max(1, min(configuration.headingLevel, 6))
         let fontScale = level <= layout.headingScales.count ? layout.headingScales[level - 1] : 1.0
@@ -37,10 +37,10 @@ struct ThemedHeadingStyle: StructuredText.HeadingStyle {
 
 // MARK: - Themed Code Block Style
 
-struct ThemedCodeBlockStyle: StructuredText.CodeBlockStyle {
+public struct ThemedCodeBlockStyle: StructuredText.CodeBlockStyle {
     let theme: Theme
 
-    func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration) -> some View {
         let layout = theme.styleLayout
         Overflow {
             configuration.label
@@ -58,10 +58,10 @@ struct ThemedCodeBlockStyle: StructuredText.CodeBlockStyle {
 
 // MARK: - Themed Block Quote Style
 
-struct ThemedBlockQuoteStyle: StructuredText.BlockQuoteStyle {
+public struct ThemedBlockQuoteStyle: StructuredText.BlockQuoteStyle {
     let theme: Theme
 
-    func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration) -> some View {
         HStack(spacing: 0) {
             RoundedRectangle(cornerRadius: 6)
                 .fill(theme.blockQuote.borderColor.dynamicColor)
@@ -75,10 +75,10 @@ struct ThemedBlockQuoteStyle: StructuredText.BlockQuoteStyle {
 
 // MARK: - Themed Paragraph Style
 
-struct ThemedParagraphStyle: StructuredText.ParagraphStyle {
+public struct ThemedParagraphStyle: StructuredText.ParagraphStyle {
     let theme: Theme
 
-    func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .textual.lineSpacing(.fontScaled(theme.paragraph.lineSpacingScale))
             .textual.blockSpacing(.init(top: 0, bottom: theme.styleLayout.paragraphBottomSpacing))
@@ -87,10 +87,10 @@ struct ThemedParagraphStyle: StructuredText.ParagraphStyle {
 
 // MARK: - Themed Table Style
 
-struct ThemedTableStyle: StructuredText.TableStyle {
+public struct ThemedTableStyle: StructuredText.TableStyle {
     let theme: Theme
 
-    func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration) -> some View {
         let metrics = theme.styleLayout
         configuration.label
             .textual.tableCellSpacing(horizontal: metrics.tableCellSpacing, vertical: metrics.tableCellSpacing)
@@ -131,10 +131,10 @@ private extension StructuredText.TableLayout {
 
 // MARK: - Themed Table Cell Style
 
-struct ThemedTableCellStyle: StructuredText.TableCellStyle {
+public struct ThemedTableCellStyle: StructuredText.TableCellStyle {
     let theme: Theme
 
-    func makeBody(configuration: Configuration) -> some View {
+    public func makeBody(configuration: Configuration) -> some View {
         let layout = theme.styleLayout
         configuration.label
             .fontWeight(configuration.row == 0 ? .semibold : .regular)
@@ -146,10 +146,10 @@ struct ThemedTableCellStyle: StructuredText.TableCellStyle {
 
 // MARK: - Themed Thematic Break Style
 
-struct ThemedThematicBreakStyle: StructuredText.ThematicBreakStyle {
+public struct ThemedThematicBreakStyle: StructuredText.ThematicBreakStyle {
     let theme: Theme
 
-    func makeBody(configuration _: Configuration) -> some View {
+    public func makeBody(configuration _: Configuration) -> some View {
         let layout = theme.styleLayout
         Divider()
             .textual.frame(height: .fontScaled(layout.thematicBreakRuleFontScale))
@@ -160,36 +160,40 @@ struct ThemedThematicBreakStyle: StructuredText.ThematicBreakStyle {
 
 // MARK: - Themed Structured Text Style
 
-struct ThemedStructuredTextStyle: StructuredText.Style {
+public struct ThemedStructuredTextStyle: StructuredText.Style {
     let theme: Theme
 
-    var inlineStyle: InlineStyle {
+    public init(theme: Theme) {
+        self.theme = theme
+    }
+
+    public var inlineStyle: InlineStyle {
         InlineStyle()
             .code(.monospaced, .fontScale(0.85), .backgroundColor(theme.codeBlock.background.dynamicColor))
             .strong(.fontWeight(.semibold))
             .link(.foregroundColor(theme.colors.link.dynamicColor))
     }
 
-    var headingStyle: ThemedHeadingStyle { .init(theme: theme) }
-    var paragraphStyle: ThemedParagraphStyle { .init(theme: theme) }
-    var blockQuoteStyle: ThemedBlockQuoteStyle { .init(theme: theme) }
-    var codeBlockStyle: ThemedCodeBlockStyle { .init(theme: theme) }
-    var listItemStyle: StructuredText.DefaultListItemStyle {
+    public var headingStyle: ThemedHeadingStyle { .init(theme: theme) }
+    public var paragraphStyle: ThemedParagraphStyle { .init(theme: theme) }
+    public var blockQuoteStyle: ThemedBlockQuoteStyle { .init(theme: theme) }
+    public var codeBlockStyle: ThemedCodeBlockStyle { .init(theme: theme) }
+    public var listItemStyle: StructuredText.DefaultListItemStyle {
         .default(markerSpacing: .fontScaled(theme.resolvedList.markerSpacing))
     }
-    var unorderedListMarker: StructuredText.HierarchicalSymbolListMarker {
+    public var unorderedListMarker: StructuredText.HierarchicalSymbolListMarker {
         .hierarchical(.disc, .circle, .square)
     }
-    var orderedListMarker: StructuredText.DecimalListMarker { .decimal }
-    var tableStyle: ThemedTableStyle { .init(theme: theme) }
-    var tableCellStyle: ThemedTableCellStyle { .init(theme: theme) }
-    var thematicBreakStyle: ThemedThematicBreakStyle { .init(theme: theme) }
+    public var orderedListMarker: StructuredText.DecimalListMarker { .decimal }
+    public var tableStyle: ThemedTableStyle { .init(theme: theme) }
+    public var tableCellStyle: ThemedTableCellStyle { .init(theme: theme) }
+    public var thematicBreakStyle: ThemedThematicBreakStyle { .init(theme: theme) }
 }
 
 // MARK: - Themed Highlighter Theme
 
 extension Theme {
-    var highlighterTheme: StructuredText.HighlighterTheme {
+    public var highlighterTheme: StructuredText.HighlighterTheme {
         .default
     }
 }
