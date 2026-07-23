@@ -8,6 +8,15 @@ extension AttributedString {
     /// Replaces literal GFM task-list markers (`[x]`, `[X]`, `[ ]`) at the start of list items
     /// with checkbox glyphs (☑ / ☐), preserving each run's attributes. Returns `self` unchanged
     /// when the document contains no task items.
+    /// Raw-source gate for `expandingTaskListMarkers()`: a document whose Markdown contains no
+    /// marker text skips the run-by-run rebuild entirely. False positives (a `[x]` in prose or
+    /// code) are harmless — they just fall through to the full scan below.
+    func expandingTaskListMarkers(ifPresentIn markdown: String) -> AttributedString {
+        guard markdown.contains("[x]") || markdown.contains("[X]") || markdown.contains("[ ]")
+        else { return self }
+        return expandingTaskListMarkers()
+    }
+
     func expandingTaskListMarkers() -> AttributedString {
         var output = AttributedString()
         var seenListItems: Set<Int> = []

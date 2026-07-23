@@ -3,7 +3,6 @@ import TwainRendering
 import Textual
 
 struct ContentView: View {
-    let document: MarkdownDocument
     let fileURL: URL?
     let theme: Theme
     @AppStorage("fontSize") private var fontSize: Double = 16
@@ -30,8 +29,9 @@ struct ContentView: View {
     private var contentInset: CGFloat { theme.contentInset }
     private static let searchTopInset: CGFloat = 36
 
+    // `document` seeds the text state and is deliberately not stored: keeping it would pin the
+    // pre-reload text buffer for the window's lifetime.
     init(document: MarkdownDocument, fileURL: URL?, theme: Theme) {
-        self.document = document
         self.fileURL = fileURL
         self.theme = theme
         let initialFontSize = UserDefaults.standard.object(forKey: "fontSize") as? Double ?? 16

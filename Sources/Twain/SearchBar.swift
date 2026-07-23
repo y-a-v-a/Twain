@@ -23,7 +23,7 @@ final class HighlightingMarkdownCache {
         guard markdown != self.markdown else { return }
 
         let parsed = try baseParser.attributedString(for: markdown)
-            .expandingTaskListMarkers()
+            .expandingTaskListMarkers(ifPresentIn: markdown)
         self.markdown = markdown
         attributedString = parsed
         plainText = String(parsed.characters)
@@ -61,19 +61,32 @@ struct HighlightingMarkdownParser: MarkupParser {
         // `matches` may be stale relative to `result` — e.g. cmd-R while searching re-renders
         // with the new document before `SearchState` has re-run the query. Skip matches that
         // don't fit inside the freshly parsed string rather than trapping on `offsetBy:`.
+        //
+        // Index ranges are resolved in one forward pass before any mutation: `matches` is
+        // ascending and non-overlapping (findMatches scans forward), so each range starts from
+        // the previous one instead of walking from the string start per match — which made
+        // frequent-match queries quadratic. The `>= cursorOffset` guard also drops any stale
+        // match that would break the ascending order the cursor relies on.
         let charCount = result.characters.count
+        var ranges: [(matchIndex: Int, range: Range<AttributedString.Index>)] = []
+        var cursor = result.startIndex
+        var cursorOffset = 0
         for (index, match) in matches.enumerated() {
-            guard match.lowerBound >= 0,
+            guard match.lowerBound >= cursorOffset,
                   match.upperBound <= charCount,
                   match.lowerBound < match.upperBound
             else { continue }
 
-            let lowerBound = result.characters.index(result.startIndex, offsetBy: match.lowerBound)
-            let upperBound = result.characters.index(result.startIndex, offsetBy: match.upperBound)
-            let isCurrent = index == currentMatchIndex
+            let lowerBound = result.characters.index(cursor, offsetBy: match.lowerBound - cursorOffset)
+            let upperBound = result.characters.index(lowerBound, offsetBy: match.upperBound - match.lowerBound)
+            ranges.append((index, lowerBound..<upperBound))
+            cursor = upperBound
+            cursorOffset = match.upperBound
+        }
 
-            result[lowerBound..<upperBound].swiftUI.backgroundColor =
-                isCurrent ? .orange.opacity(0.5) : .yellow.opacity(0.25)
+        for (matchIndex, range) in ranges {
+            result[range].swiftUI.backgroundColor =
+                matchIndex == currentMatchIndex ? .orange.opacity(0.5) : .yellow.opacity(0.25)
         }
 
         return result
@@ -185,7 +198,8 @@ final class SearchState {
             try cache.prepare(markdown: markdown)
             renderedText = cache.plainText
             blocks = Self.makeBlocks(from: cache.attributedString, layout: layout)
-            rebuildMatches(resetSelection: false)
+            // No rebuildMatches here: layout (font size, width, theme) can't change the
+            // rendered text, so existing match offsets and the selection stay valid.
             layoutRevision += 1
         } catch {
             renderedText = ""
@@ -298,12 +312,18 @@ final class SearchState {
     static func findMatches(of query: String, in text: String) -> [Range<Int>] {
         var found: [Range<Int>] = []
         var searchRange = text.startIndex..<text.endIndex
+        // Offsets accumulate from the previous match instead of being measured from the string
+        // start each time, which made frequent-match queries quadratic.
+        var cursor = text.startIndex
+        var cursorOffset = 0
 
         while let range = text.range(of: query, options: .caseInsensitive, range: searchRange) {
-            let lowerBound = text.distance(from: text.startIndex, to: range.lowerBound)
-            let upperBound = text.distance(from: text.startIndex, to: range.upperBound)
+            let lowerBound = cursorOffset + text.distance(from: cursor, to: range.lowerBound)
+            let upperBound = lowerBound + text.distance(from: range.lowerBound, to: range.upperBound)
 
             found.append(lowerBound..<upperBound)
+            cursor = range.upperBound
+            cursorOffset = upperBound
             searchRange = range.upperBound..<text.endIndex
         }
 

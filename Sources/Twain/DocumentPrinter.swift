@@ -31,7 +31,7 @@ struct PrintMarkdownParser: MarkupParser {
     func attributedString(for input: String) throws -> AttributedString {
         try AttributedStringMarkdownParser(baseURL: baseURL)
             .attributedString(for: input)
-            .expandingTaskListMarkers()
+            .expandingTaskListMarkers(ifPresentIn: input)
     }
 }
 

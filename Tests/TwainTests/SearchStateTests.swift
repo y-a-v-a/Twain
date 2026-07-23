@@ -139,6 +139,78 @@ struct SearchStateTests {
         }
     }
 
+    @Test func updateLayoutPreservesMatchesAndSelection() {
+        // Layout inputs (font size, width, theme) can't change the rendered text, so a resize
+        // or zoom must neither re-run the search nor move the selection.
+        let state = makeState()
+        let cache = HighlightingMarkdownCache()
+        state.updateDocument(markdown: "foo bar foo bar foo", using: cache)
+        state.updateQuery("foo")
+        state.nextMatch()
+        let matchesBefore = state.matches
+        #expect(state.currentMatchIndex == 1)
+
+        state.updateLayout(
+            Theme.default.blockLayout(fontSize: 32, contentWidth: 400),
+            markdown: "foo bar foo bar foo",
+            using: cache
+        )
+
+        #expect(state.matches == matchesBefore)
+        #expect(state.currentMatchIndex == 1)
+    }
+
+    // MARK: - Highlight overlay
+
+    @Test func everyMatchIsHighlightedAndCurrentMatchStandsOut() throws {
+        // The overlay resolves match offsets with a single forward cursor; every match must
+        // still get a background, with exactly the current one in the accent color.
+        let markdown = Array(repeating: "word", count: 60).joined(separator: " ")
+        let state = makeState()
+        let cache = HighlightingMarkdownCache()
+        state.updateDocument(markdown: markdown, using: cache)
+        state.updateQuery("word")
+        state.nextMatch()
+        #expect(state.matches.count == 60)
+
+        let parser = HighlightingMarkdownParser(
+            markdown: markdown,
+            cache: cache,
+            matches: state.matches,
+            currentMatchIndex: state.currentMatchIndex
+        )
+        let highlighted = try parser.attributedString(for: markdown)
+
+        var plain = 0
+        var current = 0
+        for run in highlighted.runs {
+            switch run.swiftUI.backgroundColor {
+            case .some(.yellow.opacity(0.25)): plain += 1
+            case .some(.orange.opacity(0.5)): current += 1
+            default: break
+            }
+        }
+        #expect(plain == 59)
+        #expect(current == 1)
+    }
+
+    @Test func staleOutOfBoundsMatchesAreSkippedNotTrapped() throws {
+        // Matches can outlive the document they were computed from (cmd-R while searching).
+        // Out-of-range or out-of-order leftovers must be dropped without crashing.
+        let markdown = "short doc"
+        let cache = HighlightingMarkdownCache()
+        try cache.prepare(markdown: markdown)
+        let parser = HighlightingMarkdownParser(
+            markdown: markdown,
+            cache: cache,
+            matches: [5..<7, 2..<4, 100..<104],
+            currentMatchIndex: 0
+        )
+        let highlighted = try parser.attributedString(for: markdown)
+        let highlightedRuns = highlighted.runs.filter { $0.swiftUI.backgroundColor != nil }
+        #expect(highlightedRuns.count == 1)
+    }
+
     // MARK: - currentMatchFraction
 
     @Test func currentMatchFractionIsNilWithoutMatches() {

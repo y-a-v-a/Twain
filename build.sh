@@ -42,11 +42,11 @@ cp ".build/$CONFIG/Twain" "$APP_BUNDLE/Contents/MacOS/Twain"
 cp Info.plist "$APP_BUNDLE/Contents/Info.plist"
 cp Twain.icns "$APP_BUNDLE/Contents/Resources/Twain.icns"
 cp Twain.sdef "$APP_BUNDLE/Contents/Resources/Twain.sdef"
-# Copy SPM resource bundles so Textual can load Prism.js for syntax highlighting
+# Copy the Textual resource bundle so Prism.js syntax highlighting works. Deliberately NOT
+# the SwiftUIMath bundle (7MB of math fonts): Twain never enables Textual's `.math` syntax
+# extension, so those resources are unreachable. Restore it if math support is ever enabled.
 rm -rf "$APP_BUNDLE/Contents/Resources/"*.bundle
-for bundle in "$BUILD_DIR"/*.bundle; do
-    cp -r "$bundle" "$APP_BUNDLE/Contents/Resources/"
-done
+cp -r "$BUILD_DIR/textual_Textual.bundle" "$APP_BUNDLE/Contents/Resources/"
 
 # Quick Look preview extension: hand-assembled appex (SPM can't build .appex
 # targets). The binary's entry point is NSExtensionMain, set at link time in
@@ -57,11 +57,19 @@ rm -rf "$APPEX"
 mkdir -p "$APPEX/Contents/MacOS" "$APPEX/Contents/Resources"
 cp "$BUILD_DIR/TwainQuickLook" "$APPEX/Contents/MacOS/TwainQuickLook"
 cp quicklook/Info.plist "$APPEX/Contents/Info.plist"
-# The appex is its own main bundle, so it needs its own copy of the SPM
-# resource bundles (Prism.js for code highlighting).
-for bundle in "$BUILD_DIR"/*.bundle; do
-    cp -r "$bundle" "$APPEX/Contents/Resources/"
-done
+# The appex is its own main bundle, so it needs its own copy of the Textual
+# resource bundle (Prism.js for code highlighting). SwiftUIMath is skipped
+# here for the same reason as in the app above.
+cp -r "$BUILD_DIR/textual_Textual.bundle" "$APPEX/Contents/Resources/"
+
+# Release binaries ship without local symbols (~3MB of symbol/string tables across the two
+# executables). External symbols and Swift metadata survive, so extension loading and the
+# AppleScript dictionary are unaffected; debug builds stay unstripped for usable backtraces.
+if [ $RELEASE -eq 1 ]; then
+    strip -x "$APP_BUNDLE/Contents/MacOS/Twain"
+    strip -x "$APPEX/Contents/MacOS/TwainQuickLook"
+fi
+
 codesign --force --sign - --entitlements quicklook/TwainQuickLook.entitlements "$APPEX" 2>/dev/null || true
 
 # Re-sign the assembled bundle so the fresh binary and resources carry a consistent

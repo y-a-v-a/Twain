@@ -212,8 +212,8 @@ they take a few seconds.
 
 - SwiftUI + [Textual](https://github.com/gonzalezreal/textual) for native Markdown rendering with Prism.js syntax highlighting
 - Swift Package Manager
-- ~24MB installed, Quick Look extension and math fonts included — still an order of
-  magnitude smaller than an Electron-based Markdown viewer
+- ~5MB installed, Quick Look extension included — two orders of magnitude smaller
+  than an Electron-based Markdown viewer
 
 ## License
 

@@ -24,15 +24,15 @@ final class PreviewViewController: NSViewController, @preconcurrency QLPreviewin
             return
         }
 
+        // The hosting view must be *added to* the controller's view, not assigned as `view`:
+        // Quick Look attaches the controller's original view to its remote bridge before this
+        // method runs, so a replaced view never appears on screen. Tear down the previous
+        // hosting view first in case the controller is reused for another file.
+        view.subviews.forEach { $0.removeFromSuperview() }
         let hosting = NSHostingView(rootView: PreviewContent(markdown: markdown))
-        hosting.translatesAutoresizingMaskIntoConstraints = false
+        hosting.autoresizingMask = [.width, .height]
+        hosting.frame = view.bounds
         view.addSubview(hosting)
-        NSLayoutConstraint.activate([
-            hosting.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            hosting.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            hosting.topAnchor.constraint(equalTo: view.topAnchor),
-            hosting.bottomAnchor.constraint(equalTo: view.bottomAnchor)
-        ])
         handler(nil)
     }
 }

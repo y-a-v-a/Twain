@@ -21,6 +21,13 @@ PLIST="$APPEX/Contents/Info.plist"
 # Prism resources must be in the appex itself (it is its own main bundle).
 [ -d "$APPEX/Contents/Resources/textual_Textual.bundle" ] || fail "Textual resource bundle missing from appex"
 
+# The SwiftUIMath fonts (7MB per copy) must NOT ship: Twain never enables Textual's
+# `.math` extension. If math support is added, update build.sh and this check together.
+for dir in "$APP/Contents/Resources" "$APPEX/Contents/Resources"; do
+    [ -z "$(find "$dir" -maxdepth 1 -name '*SwiftUIMath*' -print -quit)" ] \
+        || fail "SwiftUIMath bundle present in $dir — dead weight, see build.sh"
+done
+
 # The entry point swap: NSExtensionMain must be an imported symbol, or the
 # appex would run the (empty) SPM main and exit instead of serving previews.
 nm -u "$APPEX/Contents/MacOS/TwainQuickLook" | grep -q _NSExtensionMain || fail "binary does not import NSExtensionMain"

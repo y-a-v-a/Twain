@@ -58,6 +58,26 @@ struct TaskListMarkerTests {
         #expect(try expandedText("- first\n\n  [x] second") == "first[x] second")
     }
 
+    @Test func sourceGateSkipsRebuildWhenNoMarkerText() throws {
+        // The raw-source gate must return the parse untouched without the run-by-run rebuild…
+        let parsed = try AttributedStringMarkdownParser(baseURL: nil)
+            .attributedString(for: "- plain item")
+        #expect(parsed.expandingTaskListMarkers(ifPresentIn: "- plain item") == parsed)
+    }
+
+    @Test func sourceGateStillExpandsWhenMarkerTextPresent() throws {
+        // …and must be transparent when marker text is in the source, including the false-positive
+        // case where the `[x]` is content (inline code): same output as the ungated scan.
+        for markdown in ["- [x] done\n- [ ] open", "`[x]` in code"] {
+            let parsed = try AttributedStringMarkdownParser(baseURL: nil)
+                .attributedString(for: markdown)
+            #expect(
+                parsed.expandingTaskListMarkers(ifPresentIn: markdown)
+                    == parsed.expandingTaskListMarkers()
+            )
+        }
+    }
+
     @Test func documentWithoutMarkersIsUntouched() throws {
         let parsed = try AttributedStringMarkdownParser(baseURL: nil)
             .attributedString(for: "- plain item\n\nparagraph")
