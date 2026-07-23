@@ -1,6 +1,8 @@
 name: Package
 
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       version:
@@ -8,14 +10,22 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write
+
 jobs:
   package:
     name: Build & package Twain.app
     runs-on: macos-15
     env:
-      VERSION: ${{ inputs.version }}
+      # Tag push: derive from the tag (v1.4 -> 1.4); manual run: use the input.
+      VERSION: ${{ inputs.version || '' }}
     steps:
       - uses: actions/checkout@v7
+
+      - name: Derive version from tag
+        if: github.ref_type == 'tag'
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
       - name: Stamp version into Info.plist
         run: |
@@ -37,6 +47,13 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: Twain-${{ inputs.version }}
+          name: Twain-${{ env.VERSION }}
           path: Twain-*.zip
           if-no-files-found: error
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          files: Twain-*.zip
+          generate_release_notes: true
