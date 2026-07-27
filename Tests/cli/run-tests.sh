@@ -1,7 +1,7 @@
 #!/bin/bash
-# Tests for the `twain` CLI embedded in install.sh.
+# Tests for the `twain` CLI (cli/twain).
 #
-# Self-contained: extracts the CLI from install.sh, stubs `open` to record its
+# Self-contained: copies the CLI from cli/twain, stubs `open` to record its
 # invocations, and asserts on the commands the CLI would run. Needs no Twain.app
 # and no macOS — it runs on Linux too, so it doubles as a cheap CI check.
 #
@@ -68,13 +68,8 @@ assert_log_line_count() {
 
 # --- Setup -------------------------------------------------------------------
 
-sed -n "/^cat > \"\$TMPFILE\" << 'SCRIPT'\$/,/^SCRIPT\$/p" "$REPO_ROOT/install.sh" \
-    | sed '1d;$d' > "$WORK/twain"
+cp "$REPO_ROOT/cli/twain" "$WORK/twain"
 chmod +x "$WORK/twain"
-if [ ! -s "$WORK/twain" ]; then
-    echo "FATAL: could not extract the CLI from install.sh" >&2
-    exit 1
-fi
 
 mkdir -p "$WORK/bin"
 cat > "$WORK/bin/open" <<EOF

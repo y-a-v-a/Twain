@@ -42,6 +42,9 @@ cp ".build/$CONFIG/Twain" "$APP_BUNDLE/Contents/MacOS/Twain"
 cp Info.plist "$APP_BUNDLE/Contents/Info.plist"
 cp Twain.icns "$APP_BUNDLE/Contents/Resources/Twain.icns"
 cp Twain.sdef "$APP_BUNDLE/Contents/Resources/Twain.sdef"
+# The `twain` CLI ships in the bundle so the app's "Install Command Line Tool…"
+# menu item can copy it to ~/.bin without a source checkout.
+install -m 755 cli/twain "$APP_BUNDLE/Contents/Resources/twain"
 # Copy the Textual resource bundle so Prism.js syntax highlighting works. Deliberately NOT
 # the SwiftUIMath bundle (7MB of math fonts): Twain never enables Textual's `.math` syntax
 # extension, so those resources are unreachable. Restore it if math support is ever enabled.

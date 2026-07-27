@@ -67,6 +67,7 @@ struct TwainApp: App {
             ContentView(document: file.document, fileURL: file.fileURL, theme: themeStore.theme)
         }
         .commands {
+            InstallCLICommands()
             RefreshCommands()
             PrintCommands()
             FindCommands()
