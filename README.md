@@ -24,7 +24,9 @@ A fast, minimal Markdown viewer for macOS. Read-only — no editing, just render
 ./install.sh
 ```
 
-Installs `Twain.app` to `~/Applications` and a CLI wrapper to `~/.bin`, so you can run:
+Installs `Twain.app` to `~/Applications` and the `twain` CLI (`cli/twain`) to `~/.bin`.
+(Installed the app from a packaged zip instead? The **Twain → Install Command Line
+Tool…** menu item installs the same CLI.) Then you can run:
 
 ```bash
 twain file.md
@@ -39,10 +41,14 @@ See `twain --help` for all options.
 
 ## Packaged builds
 
-Downloadable builds are produced by the [`Package` workflow](.github/workflows/package.yml),
-triggered by hand: **Actions → Package → Run workflow**, enter a version string (e.g. `1.5`).
-The run stamps the version into `Info.plist`, builds a release bundle, and uploads
-`Twain-<version>.zip` as a workflow artifact (GitHub keeps artifacts for 90 days).
+Downloadable builds are produced by the [`Package` workflow](.github/workflows/package.yml).
+Pushing a `v*` tag (e.g. `v0.6.1`) stamps the version into `Info.plist`, builds a release
+bundle, and publishes `Twain-<version>.zip` as a [GitHub Release](../../releases). The
+workflow can also be run by hand (**Actions → Package → Run workflow**) with a version string.
+
+After unzipping, drag `Twain.app` to `~/Applications` (or `/Applications`). To get the
+`twain` CLI, launch the app once and choose **Twain → Install Command Line Tool…** — it
+copies the bundled script to `~/.bin/twain`.
 
 These are Apple Silicon (arm64) builds with only an ad-hoc signature — no Apple
 Developer ID, not notarized — so Gatekeeper refuses a downloaded copy by default.
