@@ -113,6 +113,32 @@ struct FileWatcherTests {
         #expect(counter.count == 0)
     }
 
+    @Test func detectsEntryAddedInWatchedDirectory() async throws {
+        let file = try makeTempFile()
+        let folder = file.deletingLastPathComponent()
+        let counter = EventCounter()
+        let watcher = FileWatcher(url: folder) { counter.increment() }
+        defer { watcher.stop() }
+
+        try await letWatcherArm()
+        try "# new\n".write(
+            to: folder.appendingPathComponent("new.md"), atomically: false, encoding: .utf8
+        )
+        #expect(await eventually { counter.count >= 1 })
+    }
+
+    @Test func detectsEntryRemovedFromWatchedDirectory() async throws {
+        let file = try makeTempFile()
+        let folder = file.deletingLastPathComponent()
+        let counter = EventCounter()
+        let watcher = FileWatcher(url: folder) { counter.increment() }
+        defer { watcher.stop() }
+
+        try await letWatcherArm()
+        try FileManager.default.removeItem(at: file)
+        #expect(await eventually { counter.count >= 1 })
+    }
+
     @Test func coalescesEventBursts() async throws {
         let file = try makeTempFile()
         let counter = EventCounter()

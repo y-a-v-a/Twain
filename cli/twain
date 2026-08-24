@@ -7,10 +7,11 @@ set -euo pipefail
 
 usage() {
     cat <<'EOF'
-Usage: twain [options] [file ...]
+Usage: twain [options] [file|folder ...]
        command | twain -
 
-Opens Markdown files in Twain. With no arguments, opens the app.
+Opens Markdown files in Twain. A folder argument opens a window listing the
+folder's markdown files in a sidebar. With no arguments, opens the app.
 
 Options:
   -g, --background    Open without bringing Twain to the foreground
@@ -25,6 +26,7 @@ Options:
 
 Examples:
   twain README.md                   # open a file
+  twain ~/notes                     # browse a folder's markdown files
   twain -g report.md                # open without stealing focus
   twain --find Install README.md    # open and jump to "Install"
   twain --refresh                   # reload every open document
@@ -150,6 +152,17 @@ for f in "${FILES[@]}"; do
     if [ ! -e "$f" ]; then
         echo "twain: no such file: $f" >&2
         exit 1
+    fi
+    if [ -d "$f" ]; then
+        if [ -n "$FIND_QUERY" ]; then
+            echo "twain: --find cannot be combined with a folder: $f" >&2
+            exit 1
+        fi
+        ensure_running
+        URL="twain://open-folder?dir=$(urlencode "$(abspath "$f")")"
+        [ "$BACKGROUND" -eq 1 ] && URL="$URL&activate=0"
+        open ${OPEN_FLAGS[@]+"${OPEN_FLAGS[@]}"} "$URL"
+        continue
     fi
     ABS=$(abspath "$f")
     if [ -n "$FIND_QUERY" ]; then

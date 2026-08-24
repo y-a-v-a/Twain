@@ -78,6 +78,34 @@ struct AgentCommandTests {
         )
     }
 
+    // MARK: - open-folder
+
+    @Test func parsesOpenFolder() {
+        #expect(
+            parse("twain://open-folder?dir=/docs/notes")
+                == .openFolder(path: "/docs/notes", activate: true)
+        )
+    }
+
+    @Test func parsesOpenFolderInBackground() {
+        #expect(
+            parse("twain://open-folder?dir=/docs/notes&activate=0")
+                == .openFolder(path: "/docs/notes", activate: false)
+        )
+    }
+
+    @Test func openFolderRequiresAbsolutePath() {
+        #expect(parse("twain://open-folder") == nil)
+        #expect(parse("twain://open-folder?dir=notes") == nil)
+    }
+
+    @Test func openFolderDecodesEncodedPath() {
+        #expect(
+            parse("twain://open-folder?dir=/docs/release%20notes")
+                == .openFolder(path: "/docs/release notes", activate: true)
+        )
+    }
+
     // MARK: - rejection
 
     @Test func rejectsUnknownCommand() {

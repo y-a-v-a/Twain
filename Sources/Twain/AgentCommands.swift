@@ -19,12 +19,15 @@ extension Notification.Name {
 ///     twain://open?file=/abs/path.md               open a file
 ///         [&search=text]                           …and jump to the first match of `text`
 ///         [&activate=0]                            …without bringing Twain to the front
+///     twain://open-folder?dir=/abs/path            open a folder window listing its
+///         [&activate=0]                            markdown files in a sidebar
 ///
 /// File paths must be absolute; query values are percent-decoded by `URLComponents`.
 enum AgentCommand: Equatable {
     case refresh(path: String?)
     case find(query: String, path: String?)
     case open(path: String, searchQuery: String?, activate: Bool)
+    case openFolder(path: String, activate: Bool)
 
     static func parse(_ url: URL) -> AgentCommand? {
         guard url.scheme?.lowercased() == "twain",
@@ -60,6 +63,9 @@ enum AgentCommand: Equatable {
                 searchQuery: nonEmpty(params["search"]),
                 activate: params["activate"] != "0"
             )
+        case "open-folder":
+            guard let path = absolutePath(params["dir"]) else { return nil }
+            return .openFolder(path: path, activate: params["activate"] != "0")
         default:
             return nil
         }
@@ -78,6 +84,12 @@ final class AgentCommandCenter {
     /// Search queries from `twain://open?…&search=` for documents that aren't open yet, keyed by
     /// resolved path. The window created by the open consumes its entry when it appears.
     private var pendingFindByPath: [String: String] = [:]
+
+    /// Opens a folder window. Registered by `OpenFolderCommands` (the only place with access to
+    /// SwiftUI's `openWindow`); commands are built during launch, but a `twain://open-folder`
+    /// URL that races ahead of that is queued and flushed on registration.
+    private var openFolderWindow: ((URL) -> Void)?
+    private var pendingFolderOpens: [URL] = []
 
     func handle(_ url: URL) {
         guard let command = AgentCommand.parse(url) else { return }
@@ -109,6 +121,26 @@ final class AgentCommandCenter {
                 withApplicationAt: Bundle.main.bundleURL,
                 configuration: configuration
             )
+
+        case .openFolder(let path, let activate):
+            let url = URL(fileURLWithPath: Self.resolvedPath(path), isDirectory: true)
+            if let openFolderWindow {
+                openFolderWindow(url)
+            } else {
+                pendingFolderOpens.append(url)
+            }
+            if activate {
+                NSApp.activate()
+            }
+        }
+    }
+
+    func registerFolderWindowOpener(_ opener: @escaping (URL) -> Void) {
+        openFolderWindow = opener
+        let pending = pendingFolderOpens
+        pendingFolderOpens = []
+        for url in pending {
+            opener(url)
         }
     }
 

@@ -31,6 +31,7 @@ Tool…** menu item installs the same CLI.) Then you can run:
 ```bash
 twain file.md
 twain a.md b.md                 # opens each in its own window
+twain ~/notes                   # browse a folder's markdown files in a sidebar
 twain -g report.md              # open without stealing focus
 twain --find "Install" file.md  # open and jump to the first match
 twain --refresh                 # reload every open document from disk
@@ -144,6 +145,7 @@ window re-renders automatically — no integration needed. For everything else t
 | `twain://open?file=/abs/path.md` | Open a file |
 | `twain://open?file=/abs/path.md&search=text` | Open and jump to the first match of `text` |
 | `twain://open?file=/abs/path.md&activate=0` | Open without bringing Twain to the front |
+| `twain://open-folder?dir=/abs/path` | Open a folder window listing its markdown files (`&activate=0` works here too) |
 
 File paths must be absolute and query values percent-encoded:
 

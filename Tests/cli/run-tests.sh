@@ -109,6 +109,38 @@ assert_log_line "background open passes -g and handles spaces in paths" \
 run_cli
 assert_log_line "no arguments just opens the app" "OPEN: -a $APP_PATH"
 
+# --- Opening folders ---------------------------------------------------------
+
+run_cli docs
+assert_log_contains "folder goes through twain://open-folder" \
+    "OPEN: twain://open-folder?dir=$WORK/docs"
+assert_log_line "app is launched before the folder URL is sent" "OPEN: -g -a $APP_PATH"
+
+mkdir -p "$WORK/my notes"
+run_cli "my notes"
+assert_log_contains "folder path with spaces is percent-encoded" \
+    "twain://open-folder?dir=$WORK/my%20notes"
+
+run_cli -g docs
+assert_log_contains "background folder open adds activate=0" \
+    "twain://open-folder?dir=$WORK/docs&activate=0"
+assert_log_contains "background folder open passes -g" \
+    "OPEN: -g twain://open-folder?dir="
+
+: > "$WORK/open.log"
+if "$WORK/twain" --find hello docs 2>/dev/null; then
+    fail "folder combined with --find exits non-zero"
+else
+    ok "folder combined with --find exits non-zero"
+fi
+assert_log_line_count "folder with --find opens no URL" 0
+
+run_cli docs docs/a.md
+assert_log_contains "folder and file mix: folder opens as folder" \
+    "twain://open-folder?dir=$WORK/docs"
+assert_log_contains "folder and file mix: file opens as file" \
+    "OPEN: -a $APP_PATH $WORK/docs/a.md"
+
 # --- Find --------------------------------------------------------------------
 
 run_cli --find "Phase 2 & más" docs/a.md

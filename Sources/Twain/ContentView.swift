@@ -32,10 +32,19 @@ struct ContentView: View {
     // `document` seeds the text state and is deliberately not stored: keeping it would pin the
     // pre-reload text buffer for the window's lifetime.
     init(document: MarkdownDocument, fileURL: URL?, theme: Theme) {
+        self.init(text: document.text, fileURL: fileURL, theme: theme)
+    }
+
+    /// Folder-window entry point: loads the file directly, bypassing `FileDocument`.
+    init(fileURL: URL, theme: Theme) {
+        self.init(text: MarkdownText.load(from: fileURL) ?? "", fileURL: fileURL, theme: theme)
+    }
+
+    private init(text: String, fileURL: URL?, theme: Theme) {
         self.fileURL = fileURL
         self.theme = theme
         let initialFontSize = UserDefaults.standard.object(forKey: "fontSize") as? Double ?? 16
-        _text = State(initialValue: document.text)
+        _text = State(initialValue: text)
         _searchState = State(
             initialValue: SearchState(layout: theme.blockLayout(fontSize: CGFloat(initialFontSize)))
         )
@@ -112,11 +121,11 @@ struct ContentView: View {
                 guard isSearching, searchState.hasMatches else { return }
                 scrollToMatch(proxy: proxy)
             }
-            .focusedValue(\.findNext, {
+            .focusedSceneValue(\.findNext, {
                 guard isSearching else { return }
                 searchState.nextMatch()
             })
-            .focusedValue(\.findPrevious, {
+            .focusedSceneValue(\.findPrevious, {
                 guard isSearching else { return }
                 searchState.previousMatch()
             })
@@ -133,14 +142,16 @@ struct ContentView: View {
         .onChange(of: fontSize, initial: true) { pushLayout() }
         .onChange(of: viewportSize.width) { pushLayout() }
         .onChange(of: theme) { pushLayout() }
-        .focusedValue(\.refresh, { reloadFromDisk() })
-        .focusedValue(\.find, { isSearching = true })
-        .focusedValue(\.printDocument, {
+        // Scene-scoped (not view-scoped) so the commands stay live in a folder window when
+        // focus sits in the sidebar list rather than the rendered document.
+        .focusedSceneValue(\.refresh, { reloadFromDisk() })
+        .focusedSceneValue(\.find, { isSearching = true })
+        .focusedSceneValue(\.printDocument, {
             let job = printJob
             let window = NSApp.keyWindow
             Task { await DocumentPrinter.runPrintPanel(job: job, attachedTo: window) }
         })
-        .focusedValue(\.exportPDF, {
+        .focusedSceneValue(\.exportPDF, {
             DocumentPrinter.presentPDFExportPanel(job: printJob, attachedTo: NSApp.keyWindow)
         })
         .onAppear {
@@ -198,12 +209,7 @@ struct ContentView: View {
     }
 
     private func reloadFromDisk() {
-        guard let url = fileURL,
-              let data = try? Data(contentsOf: url),
-              let string = String(data: data, encoding: .utf8)
-                  ?? String(data: data, encoding: .utf16)
-                  ?? String(data: data, encoding: .isoLatin1)
-        else { return }
+        guard let url = fileURL, let string = MarkdownText.load(from: url) else { return }
         text = string
     }
 

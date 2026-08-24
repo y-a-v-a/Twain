@@ -114,4 +114,39 @@ struct AgentCommandCenterTests {
         center.storePendingFind(query: "second", forPath: "/docs/a.md")
         #expect(center.consumePendingFind(forPath: "/docs/a.md") == "second")
     }
+
+    // MARK: - open-folder
+    // All cases use activate: false — activation needs a real NSApplication.
+
+    @Test func openFolderCallsRegisteredOpenerWithResolvedURL() {
+        let center = AgentCommandCenter()
+        var opened: [URL] = []
+        center.registerFolderWindowOpener { opened.append($0) }
+        center.run(.openFolder(path: "/private/tmp/../tmp/notes", activate: false))
+        #expect(opened.map(\.path) == ["/tmp/notes"])
+    }
+
+    @Test func openFolderBeforeRegistrationIsFlushedOnRegistration() {
+        let center = AgentCommandCenter()
+        center.run(.openFolder(path: "/docs/a", activate: false))
+        center.run(.openFolder(path: "/docs/b", activate: false))
+        var opened: [URL] = []
+        center.registerFolderWindowOpener { opened.append($0) }
+        #expect(opened.map(\.path) == ["/docs/a", "/docs/b"])
+        // Flushed entries must not be delivered again.
+        var reopened: [URL] = []
+        center.registerFolderWindowOpener { reopened.append($0) }
+        #expect(reopened.isEmpty)
+    }
+
+    @Test func laterRegistrationReplacesTheOpener() {
+        let center = AgentCommandCenter()
+        var first: [URL] = []
+        var second: [URL] = []
+        center.registerFolderWindowOpener { first.append($0) }
+        center.registerFolderWindowOpener { second.append($0) }
+        center.run(.openFolder(path: "/docs/a", activate: false))
+        #expect(first.isEmpty)
+        #expect(second.count == 1)
+    }
 }

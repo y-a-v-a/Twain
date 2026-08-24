@@ -68,6 +68,7 @@ struct TwainApp: App {
         }
         .commands {
             InstallCLICommands()
+            OpenFolderCommands()
             RefreshCommands()
             PrintCommands()
             FindCommands()
@@ -75,8 +76,43 @@ struct TwainApp: App {
             FontStyleCommands()
         }
 
+        // Folder windows. `for: URL.self` gives restoration and dedup (reopening the same
+        // folder fronts the existing window); `commandsRemoved` keeps this scene from adding
+        // its own "New Window" item next to the DocumentGroup's.
+        WindowGroup(id: "folder", for: URL.self) { $folderURL in
+            FolderWindowView(folderURL: folderURL, theme: themeStore.theme)
+        }
+        .commandsRemoved()
+
         Settings {
             SettingsView()
+        }
+    }
+}
+
+struct OpenFolderCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        // Registering here (not in a view) keeps the twain://open-folder route alive even when
+        // no window exists; commands are built during launch. Idempotent, and the command
+        // center queues folder opens that arrive before this runs.
+        let _ = AgentCommandCenter.shared.registerFolderWindowOpener { url in
+            openWindow(id: "folder", value: url)
+        }
+
+        CommandGroup(after: .newItem) {
+            Button("Open Folder…") {
+                let panel = NSOpenPanel()
+                panel.canChooseDirectories = true
+                panel.canChooseFiles = false
+                panel.allowsMultipleSelection = false
+                panel.prompt = "Open"
+                if panel.runModal() == .OK, let url = panel.url {
+                    openWindow(id: "folder", value: url.standardizedFileURL)
+                }
+            }
+            .keyboardShortcut("o", modifiers: [.command, .shift])
         }
     }
 }
