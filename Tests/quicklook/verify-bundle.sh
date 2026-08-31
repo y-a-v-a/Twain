@@ -30,11 +30,13 @@ done
 
 # The entry point swap: NSExtensionMain must be an imported symbol, or the
 # appex would run the (empty) SPM main and exit instead of serving previews.
-nm -u "$APPEX/Contents/MacOS/TwainQuickLook" | grep -q _NSExtensionMain || fail "binary does not import NSExtensionMain"
+# grep must drain the pipe (no -q): under pipefail, grep -q exiting early
+# makes llvm-nm die on the broken pipe and fails the check spuriously.
+nm -u "$APPEX/Contents/MacOS/TwainQuickLook" | grep _NSExtensionMain >/dev/null || fail "binary does not import NSExtensionMain"
 
 # Signature must validate and carry the sandbox entitlement — unsandboxed
 # app extensions are not loaded.
 codesign --verify --strict "$APPEX" || fail "appex signature invalid"
-codesign -d --entitlements - "$APPEX" 2>&1 | grep -q com.apple.security.app-sandbox || fail "appex not sandboxed"
+codesign -d --entitlements - "$APPEX" 2>&1 | grep com.apple.security.app-sandbox >/dev/null || fail "appex not sandboxed"
 
 echo "verify-bundle: OK ($APPEX)"
