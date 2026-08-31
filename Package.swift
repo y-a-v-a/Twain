@@ -8,7 +8,7 @@ let package = Package(
         .macOS(.v15)
     ],
     dependencies: [
-        .package(url: "https://github.com/gonzalezreal/textual", from: "0.5.0")
+        .package(url: "https://github.com/y-a-v-a/textual", branch: "main")
     ],
     targets: [
         // Theme + Textual styles, shared between the app and the Quick Look
