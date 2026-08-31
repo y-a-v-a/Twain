@@ -37,6 +37,7 @@ enum CLIInstaller {
         return destination
     }
 
+    @MainActor
     static func installAndReport() {
         let alert = NSAlert()
         do {
