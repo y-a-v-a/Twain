@@ -164,7 +164,11 @@ final class SearchState {
     private(set) var currentMatchIndex: Int = 0
 
     private var renderedText: String = ""
-    private var blocks: [RenderedBlock] = []
+    /// Parsed document the block estimate is derived from. Blocks are only needed to position a
+    /// match, so they're built lazily in `currentMatchFraction` instead of on every document load
+    /// and layout change — the latter fires per frame during a live window resize.
+    @ObservationIgnored private var renderedAttributedString = AttributedString()
+    @ObservationIgnored private var cachedBlocks: [RenderedBlock]?
     private var documentRevision: Int = 0
     private var layoutRevision: Int = 0
     private(set) var renderRevision: Int = 0
@@ -197,13 +201,15 @@ final class SearchState {
         do {
             try cache.prepare(markdown: markdown)
             renderedText = cache.plainText
-            blocks = Self.makeBlocks(from: cache.attributedString, layout: layout)
+            renderedAttributedString = cache.attributedString
+            cachedBlocks = nil
             // No rebuildMatches here: layout (font size, width, theme) can't change the
             // rendered text, so existing match offsets and the selection stay valid.
             layoutRevision += 1
         } catch {
             renderedText = ""
-            blocks = []
+            renderedAttributedString = AttributedString()
+            cachedBlocks = nil
             matches = []
             currentMatchIndex = 0
             layoutRevision += 1
@@ -214,13 +220,15 @@ final class SearchState {
         do {
             try cache.prepare(markdown: markdown)
             renderedText = cache.plainText
-            blocks = Self.makeBlocks(from: cache.attributedString, layout: layout)
+            renderedAttributedString = cache.attributedString
+            cachedBlocks = nil
             documentRevision += 1
             rebuildMatches(resetSelection: false)
             renderRevision += 1
         } catch {
             renderedText = ""
-            blocks = []
+            renderedAttributedString = AttributedString()
+            cachedBlocks = nil
             matches = []
             currentMatchIndex = 0
             documentRevision += 1
@@ -258,6 +266,8 @@ final class SearchState {
     var currentMatchFraction: CGFloat? {
         guard hasMatches, !renderedText.isEmpty else { return nil }
 
+        let blocks = cachedBlocks ?? Self.makeBlocks(from: renderedAttributedString, layout: layout)
+        cachedBlocks = blocks
         let matchOffset = matches[currentMatchIndex].lowerBound
 
         guard let blockIndex = Self.blockIndex(containing: matchOffset, in: blocks) else {
@@ -336,15 +346,24 @@ final class SearchState {
     ) -> [RenderedBlock] {
         let runs = topLevelBlockRuns(in: attributedString)
 
+        // Runs and table rows are ascending, so offsets are measured from the previous boundary
+        // rather than from the string start each time.
+        let characters = attributedString.characters
+        var cursor = attributedString.startIndex
+        var cursorOffset = 0
+        func offset(of index: AttributedString.Index) -> Int {
+            if index >= cursor {
+                cursorOffset += characters.distance(from: cursor, to: index)
+            } else {
+                cursorOffset -= characters.distance(from: index, to: cursor)
+            }
+            cursor = index
+            return cursorOffset
+        }
+
         let blocks = runs.compactMap { run -> RenderedBlock? in
-            let lowerBound = attributedString.characters.distance(
-                from: attributedString.startIndex,
-                to: run.range.lowerBound
-            )
-            let upperBound = attributedString.characters.distance(
-                from: attributedString.startIndex,
-                to: run.range.upperBound
-            )
+            let lowerBound = offset(of: run.range.lowerBound)
+            let upperBound = offset(of: run.range.upperBound)
 
             guard upperBound > lowerBound else { return nil }
 
@@ -354,14 +373,8 @@ final class SearchState {
                 text: blockText,
                 intent: run.intent,
                 tableRowRanges: run.tableRowRanges.compactMap { rowRange in
-                    let rowLowerBound = attributedString.characters.distance(
-                        from: attributedString.startIndex,
-                        to: rowRange.lowerBound
-                    )
-                    let rowUpperBound = attributedString.characters.distance(
-                        from: attributedString.startIndex,
-                        to: rowRange.upperBound
-                    )
+                    let rowLowerBound = offset(of: rowRange.lowerBound)
+                    let rowUpperBound = offset(of: rowRange.upperBound)
 
                     guard rowUpperBound > rowLowerBound else { return nil }
                     return rowLowerBound..<rowUpperBound
@@ -505,10 +518,12 @@ final class SearchState {
     private static func lineStartOffsets(for text: String) -> [Int] {
         guard !text.isEmpty else { return [0] }
 
+        // `text.count` is O(n) on String; hoisted so the scan stays linear.
+        let count = text.count
         var offsets: [Int] = [0]
         for (offset, character) in text.enumerated() where character.isNewline {
             let nextOffset = offset + 1
-            if nextOffset < text.count {
+            if nextOffset < count {
                 offsets.append(nextOffset)
             }
         }
