@@ -34,8 +34,61 @@ jobs:
             -c "Set :CFBundleVersion $VERSION" \
             Info.plist
 
-      - name: Build release app bundle
+      # Developer ID signing needs the certificate in a keychain codesign can reach. A
+      # throwaway keychain keeps it off the runner's login keychain; removed in cleanup.
+      - name: Import signing certificate
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          if [ -z "$MACOS_CERT_P12" ]; then
+            echo "::error::MACOS_CERT_P12 secret is not set — cannot produce a signed release."
+            exit 1
+          fi
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" \
+            -f pkcs12 -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/cert.p12"
+
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" \
+            | sed -n 's/.*"\(Developer ID Application: .*\)"/\1/p' | head -1)
+          [ -n "$IDENTITY" ] || { echo "::error::No Developer ID Application identity in MACOS_CERT_P12"; exit 1; }
+          echo "SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Write notarization key
+        env:
+          NOTARY_KEY_P8: ${{ secrets.NOTARY_KEY_P8 }}
+        run: |
+          if [ -z "$NOTARY_KEY_P8" ]; then
+            echo "::error::NOTARY_KEY_P8 secret is not set — cannot notarize."
+            exit 1
+          fi
+          echo "$NOTARY_KEY_P8" | base64 --decode > "$RUNNER_TEMP/notary_key.p8"
+          echo "NOTARY_KEY_PATH=$RUNNER_TEMP/notary_key.p8" >> "$GITHUB_ENV"
+
+      # build.sh switches to hardened-runtime Developer ID signing when SIGN_IDENTITY is set.
+      - name: Build signed release app bundle
         run: ./build.sh --release
+
+      - name: Verify bundle and signature
+        run: |
+          Tests/quicklook/verify-bundle.sh .build/release/Twain.app
+          codesign --verify --deep --strict --verbose=2 .build/release/Twain.app
+
+      # Stapling the app (not just the DMG) keeps it valid offline after it's copied out
+      # of the DMG, and makes the zip download a notarized build too.
+      - name: Notarize app
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: ./notarize.sh .build/release/Twain.app
 
       # ditto preserves executable bits and bundle structure; uploading the bare
       # .app would strip permissions (actions/upload-artifact limitation).
@@ -44,16 +97,42 @@ jobs:
       - name: Zip app bundle
         run: ditto -c -k --norsrc --noextattr --noqtn --keepParent .build/release/Twain.app "Twain-$VERSION.zip"
 
+      # The DMG is signed separately from the app it contains, then notarized and
+      # stapled itself so Gatekeeper accepts the download before it's even opened.
+      - name: Build, sign and notarize DMG
+        env:
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          STAGING="$RUNNER_TEMP/dmg"
+          mkdir -p "$STAGING"
+          ditto .build/release/Twain.app "$STAGING/Twain.app"
+          ln -s /Applications "$STAGING/Applications"
+          hdiutil create -volname Twain -srcfolder "$STAGING" -fs HFS+ -format UDZO -ov "Twain-$VERSION.dmg"
+          codesign --force --sign "$SIGN_IDENTITY" --timestamp "Twain-$VERSION.dmg"
+          ./notarize.sh "Twain-$VERSION.dmg"
+          spctl --assess --type open --context context:primary-signature -vv "Twain-$VERSION.dmg"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: Twain-${{ env.VERSION }}
-          path: Twain-*.zip
+          path: |
+            Twain-*.dmg
+            Twain-*.zip
           if-no-files-found: error
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}
-          files: Twain-*.zip
+          files: |
+            Twain-*.dmg
+            Twain-*.zip
           generate_release_notes: true
+
+      - name: Remove signing keychain and key
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/notary_key.p8"

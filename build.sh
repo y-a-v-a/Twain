@@ -73,12 +73,23 @@ if [ $RELEASE -eq 1 ]; then
     strip -x "$APPEX/Contents/MacOS/TwainQuickLook"
 fi
 
-codesign --force --sign - --entitlements quicklook/TwainQuickLook.entitlements "$APPEX" 2>/dev/null || true
+# SIGN_IDENTITY selects the signature: unset/"-" is ad-hoc (local and CI builds), a
+# "Developer ID Application: …" identity produces a distributable build. Distribution
+# signing adds the hardened runtime and a secure timestamp, both required for
+# notarization, and fails loudly instead of falling back.
+SIGN_IDENTITY="${SIGN_IDENTITY:--}"
+if [ "$SIGN_IDENTITY" = "-" ]; then
+    sign() { codesign --force --sign - "$@" 2>/dev/null || true; }
+else
+    sign() { codesign --force --sign "$SIGN_IDENTITY" --options runtime --timestamp "$@"; }
+fi
+
+sign --entitlements quicklook/TwainQuickLook.entitlements "$APPEX"
 
 # Re-sign the assembled bundle so the fresh binary and resources carry a consistent
-# ad-hoc signature. Must come after the appex is signed: adding PlugIns content
-# invalidates the outer seal.
-codesign --force --sign - "$APP_BUNDLE" 2>/dev/null || true
+# signature. Must come after the appex is signed: adding PlugIns content invalidates
+# the outer seal.
+sign "$APP_BUNDLE"
 
 echo "Built: $APP_BUNDLE"
 
