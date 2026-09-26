@@ -43,7 +43,7 @@ struct PreviewContent: View {
 
     var body: some View {
         ScrollView {
-            StructuredText(markdown: markdown)
+            StructuredText(markdown: markdown, syntaxExtensions: twainSyntaxExtensions)
                 .font(.system(size: 16))
                 .textual.textSelection(.enabled)
                 .textual.highlighterTheme(theme.highlighterTheme)
