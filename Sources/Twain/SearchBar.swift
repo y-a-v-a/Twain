@@ -9,10 +9,10 @@ final class HighlightingMarkdownCache {
     /// The document's own URL. Foundation's parser resolves relative image destinations
     /// against it at parse time, so document-relative images come out as absolute file URLs
     /// that Textual's default attachment loader can fetch.
-    private let baseParser: AttributedStringMarkdownParser
+    private let baseParser: FrontMatterParser<AttributedStringMarkdownParser>
 
     init(baseURL: URL? = nil) {
-        baseParser = AttributedStringMarkdownParser(baseURL: baseURL)
+        baseParser = FrontMatterParser(base: AttributedStringMarkdownParser(baseURL: baseURL))
     }
 
     private(set) var markdown: String = ""
@@ -106,7 +106,14 @@ private struct RenderedBlock {
     enum LayoutModel {
         case character
         case explicitLines(lineStartOffsets: [Int])
-        case tableRows(rowRanges: [Range<Int>])
+        case tableRows(rows: [TableRow])
+    }
+
+    /// One table row: its character range and estimated height in line units. Rows are sized
+    /// individually because cells wrap — a front-matter description is a paragraph, not a line.
+    struct TableRow {
+        let range: Range<Int>
+        let height: CGFloat
     }
 
     let range: Range<Int>
@@ -135,19 +142,19 @@ private struct RenderedBlock {
                 let lineIndex = CGFloat(lineStartOffsets.lastIndex(where: { $0 <= localOffset }) ?? 0)
                 let lineCount = CGFloat(lineStartOffsets.count)
                 return contentHeight * (lineIndex + 0.5) / lineCount
-            case .tableRows(let rowRanges):
-                guard !rowRanges.isEmpty else { return 0 }
+            case .tableRows(let rows):
+                guard !rows.isEmpty else { return 0 }
 
                 let rowIndex =
-                    rowRanges.firstIndex(where: { $0.contains(offset) })
-                    ?? rowRanges.lastIndex(where: { $0.lowerBound <= offset })
-                    ?? rowRanges.startIndex
-                let row = rowRanges[rowIndex]
-                let rowLocalOffset = max(0, min(offset - row.lowerBound, max(row.count - 1, 0)))
-                let rowLocalFraction = CGFloat(rowLocalOffset) / CGFloat(max(row.count, 1))
-                let rowCount = CGFloat(rowRanges.count)
+                    rows.firstIndex(where: { $0.range.contains(offset) })
+                    ?? rows.lastIndex(where: { $0.range.lowerBound <= offset })
+                    ?? rows.startIndex
+                let row = rows[rowIndex]
+                let rowLocalOffset = max(0, min(offset - row.range.lowerBound, max(row.range.count - 1, 0)))
+                let rowLocalFraction = CGFloat(rowLocalOffset) / CGFloat(max(row.range.count, 1))
+                let heightAbove = rows[..<rowIndex].reduce(0) { $0 + $1.height }
 
-                return contentHeight * (CGFloat(rowIndex) + 0.2 + (0.6 * rowLocalFraction)) / rowCount
+                return heightAbove + row.height * (0.2 + (0.6 * rowLocalFraction))
             }
         }()
 
@@ -450,19 +457,23 @@ final class SearchState {
                 layoutModel: .explicitLines(lineStartOffsets: offsets)
             )
         case .table:
-            // Row-based: one content line + cell vertical padding + row divider, per row.
-            // Character-based fallback (72-chars-per-line) doesn't apply — cells are 2D, not flowing.
-            let rows = CGFloat(max(tableRowRanges.count, 1))
-            let perRowPoints = pt
-                + (2 * layout.tableCellVerticalPadding)
-                + layout.tableCellSpacing
+            // Row-based: each row's wrapped text lines + cell vertical padding + row divider. The
+            // row text concatenates its cells, so the wrap estimate spans the full content width;
+            // that undercounts wide multi-column tables slightly but tracks tall key/value rows.
+            let rowChrome = (2 * layout.tableCellVerticalPadding) + layout.tableCellSpacing
+            let rows = tableRowRanges.map { rowRange -> RenderedBlock.TableRow in
+                let start = text.index(text.startIndex, offsetBy: max(rowRange.lowerBound - range.lowerBound, 0))
+                let end = text.index(text.startIndex, offsetBy: min(rowRange.upperBound - range.lowerBound, text.count))
+                let lines = estimatedLineUnits(for: String(text[start..<end]), charactersPerLine: layout.charactersPerLine())
+                return RenderedBlock.TableRow(range: rowRange, height: lines + rowChrome / pt)
+            }
             let frame = layout.tableInnerPadding + layout.tableOuterBorderWidth
             return RenderedBlock(
                 range: range,
                 topSurround: frame / pt,
-                contentHeight: rows * perRowPoints / pt,
+                contentHeight: rows.isEmpty ? (pt + rowChrome) / pt : rows.reduce(0) { $0 + $1.height },
                 bottomSurround: (frame + layout.tableBottomSpacing) / pt,
-                layoutModel: .tableRows(rowRanges: tableRowRanges)
+                layoutModel: .tableRows(rows: rows)
             )
         case .thematicBreak:
             return RenderedBlock(

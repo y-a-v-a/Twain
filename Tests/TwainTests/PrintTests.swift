@@ -157,6 +157,23 @@ struct DocumentPrinterTests {
         }
     }
 
+    @Test func exportedPDFRendersFrontMatterAsTableText() async throws {
+        let markdown = "---\nname: grill-me\nlicense: MIT\n---\n\n# Grill me\n\nBody text."
+        let data = try #require(await DocumentPrinter.makePDFData(
+            job: makeJob(markdown: markdown),
+            paperSize: CGSize(width: 595, height: 842)
+        ))
+        let document = try #require(PDFDocument(data: data))
+        let text = try #require(document.page(at: 0)?.string)
+
+        // Keys and values come out as text, the `---` delimiters do not.
+        #expect(text.contains("name"))
+        #expect(text.contains("grill-me"))
+        #expect(text.contains("MIT"))
+        #expect(text.contains("Grill me"))
+        #expect(!text.contains("---"))
+    }
+
     // Pages must tile the document exactly: in order, no gaps, no repeats. The distinctive
     // per-section code lines double as position markers across the whole export.
     @Test func pagesCoverTheDocumentInOrderWithoutRepeats() async throws {

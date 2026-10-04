@@ -29,6 +29,12 @@ Do this before producing implementation code. A few sentences is fine — the go
 - **The extension renders with `Theme.default`, never the user theme.** The sandbox blocks `~/.config/twain/theme.json`; don't "fix" the preview by loading it.
 - **Theme/style types live in `Sources/TwainRendering`** (shared by app and appex). New members used from the app or appex need `public`; tests reach internals via `@testable import TwainRendering`.
 
+## Front matter gotchas
+
+- **The front-matter table is part of the parsed `AttributedString`, not a separate view.** `FrontMatterParser` (TwainRendering) splits the leading `---` block off, parses the body, and prepends a hand-built table carrying Foundation table presentation intents (negative identities, so they never collide with the body's) plus the `twain.frontMatter` marker attribute. Search offsets, highlight painting, the scroll estimator, print and Quick Look all work on that one string. Don't render front matter with its own SwiftUI view — it would drop out of search and skew the scroll estimate.
+- **The table still needs its own `StructuredText` instance.** Textual bolds row 0 of every table and passes cell styles only `row`/`column`, so a header-less key/value table can't be told apart inside the document. `DocumentText` renders the marked slice in a second instance with `ThemedTableCellStyle(emphasis: .keyColumn)`; use `DocumentText` (not `StructuredText`) at every render site — app, print, appex.
+- **Nested YAML renders as indented text inside the value cell.** GitHub nests tables; Textual cells are inline-only. Values are literal (no Markdown parsing) like GitHub; only a bare URL scalar becomes a link.
+
 ## Theme gotchas
 
 - **Every new key added to an existing `Theme` section must be an optional Codable field** with a fallback accessor (`resolvedX` / `?? default`), even when it lands in the same commit as its section. Dev builds are installed via `install.sh` against the live `~/.config/twain/theme.json`, so that file can be written by intermediate build states. A required field makes older files fail to decode, which silently reverts the app to the default theme *and* blocks `syncUserThemeFile`'s decode gate from topping the file up. Entirely new sections may use required fields internally, but the section itself must be optional on `Theme`. Add a decode-fallback test (see `listSectionWithoutItemSpacingStillDecodes` in ThemeTests.swift).

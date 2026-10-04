@@ -29,7 +29,7 @@ struct PrintMarkdownParser: MarkupParser {
     var baseURL: URL?
 
     func attributedString(for input: String) throws -> AttributedString {
-        try AttributedStringMarkdownParser(baseURL: baseURL)
+        try FrontMatterParser(base: AttributedStringMarkdownParser(baseURL: baseURL))
             .attributedString(for: input)
             .expandingTaskListMarkers(ifPresentIn: input)
     }
@@ -381,7 +381,7 @@ enum DocumentPrinter {
         let font: Font = family.map { .custom($0, size: job.fontSize) }
             ?? .system(size: job.fontSize)
 
-        return StructuredText(job.markdown, parser: PrintMarkdownParser(baseURL: job.baseURL))
+        return DocumentText(job.markdown, parser: PrintMarkdownParser(baseURL: job.baseURL), theme: theme)
             .textual.imageAttachmentLoader(imageLoader)
             .font(font)
             .fontDesign(job.useSerifFont && theme.serifFontFamily == nil ? .serif : .default)

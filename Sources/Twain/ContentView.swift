@@ -81,10 +81,7 @@ struct ContentView: View {
         ScrollViewReader { proxy in
             ZStack(alignment: .top) {
                 ScrollView {
-                    StructuredText(
-                        displayText,
-                        parser: parser
-                    )
+                    DocumentText(displayText, parser: parser, theme: theme)
                     // Textual caches the resolved list item spacing in view state and only
                     // re-resolves it when a block's spacing preference changes, so a live theme
                     // edit of `list.itemSpacing` would otherwise render with the stale value.

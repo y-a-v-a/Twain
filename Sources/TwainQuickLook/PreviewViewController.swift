@@ -43,7 +43,11 @@ struct PreviewContent: View {
 
     var body: some View {
         ScrollView {
-            StructuredText(markdown: markdown)
+            DocumentText(
+                markdown,
+                parser: FrontMatterParser(base: AttributedStringMarkdownParser(baseURL: nil)),
+                theme: theme
+            )
                 .font(.system(size: 16))
                 .textual.textSelection(.enabled)
                 .textual.highlighterTheme(theme.highlighterTheme)

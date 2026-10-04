@@ -116,6 +116,8 @@ referenced by the document aren't shown (the extension may only read the preview
 ## Features
 
 - 🔄 Live reload: open documents follow the file on disk (atomic saves included)
+- 🗂️ YAML front matter rendered as a key/value table, the way GitHub shows it — handy for
+  agent skill files
 - 🌈 Native syntax highlighting in code blocks (automatic language detection)
 - 🔤 Sans-serif and serif font options
 - 💾 Persistent font size and style preferences

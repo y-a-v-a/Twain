@@ -322,6 +322,25 @@ struct SearchStateTests {
         let wideFraction = try #require(wide.currentMatchFraction)
         #expect(narrowFraction > wideFraction)
     }
+
+    @Test func tallTableRowsPushLaterMatchesDown() throws {
+        // A front-matter description is a paragraph in a table cell. Sizing every row as one line
+        // would put the heading's match far too early; wrapping the row by width must move it.
+        let description = String(repeating: "word ", count: 80)
+        let doc = "---\nname: x\ndescription: \(description)\n---\n\n# Tail heading foo"
+
+        let narrow = makeState(contentWidth: 320)
+        narrow.updateDocument(markdown: doc, using: HighlightingMarkdownCache())
+        narrow.updateQuery("foo")
+
+        let wide = makeState(contentWidth: 2000)
+        wide.updateDocument(markdown: doc, using: HighlightingMarkdownCache())
+        wide.updateQuery("foo")
+
+        let narrowFraction = try #require(narrow.currentMatchFraction)
+        let wideFraction = try #require(wide.currentMatchFraction)
+        #expect(narrowFraction > wideFraction)
+    }
 }
 
 @MainActor

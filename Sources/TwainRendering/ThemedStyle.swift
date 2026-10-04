@@ -89,6 +89,9 @@ public struct ThemedParagraphStyle: StructuredText.ParagraphStyle {
 
 public struct ThemedTableStyle: StructuredText.TableStyle {
     let theme: Theme
+    /// Space below the table. Zero inside a document, where Textual's block stack spaces the
+    /// blocks itself; `DocumentText` sets it on the stand-alone front-matter table.
+    var trailingSpacing: CGFloat = 0
 
     public func makeBody(configuration: Configuration) -> some View {
         let metrics = theme.styleLayout
@@ -117,6 +120,7 @@ public struct ThemedTableStyle: StructuredText.TableStyle {
             }
             .padding(metrics.tableInnerPadding)
             .border(theme.colors.border.dynamicColor, width: metrics.tableOuterBorderWidth)
+            .padding(.bottom, trailingSpacing)
     }
 }
 
@@ -132,12 +136,24 @@ private extension StructuredText.TableLayout {
 // MARK: - Themed Table Cell Style
 
 public struct ThemedTableCellStyle: StructuredText.TableCellStyle {
+    /// Which cells read as labels: the header row of a GFM table, or the key column of the
+    /// header-less front-matter table.
+    enum Emphasis {
+        case headerRow
+        case keyColumn
+    }
+
     let theme: Theme
+    var emphasis: Emphasis = .headerRow
 
     public func makeBody(configuration: Configuration) -> some View {
         let layout = theme.styleLayout
+        let isLabel = switch emphasis {
+        case .headerRow: configuration.row == 0
+        case .keyColumn: configuration.column == 0
+        }
         configuration.label
-            .fontWeight(configuration.row == 0 ? .semibold : .regular)
+            .fontWeight(isLabel ? .semibold : .regular)
             .padding(.vertical, layout.tableCellVerticalPadding)
             .padding(.horizontal, layout.tableCellHorizontalPadding)
             .textual.lineSpacing(.fontScaled(0.25))
