@@ -31,7 +31,7 @@ Tool…** menu item installs the same CLI.) Then you can run:
 ```bash
 twain file.md
 twain a.md b.md                 # opens each in its own window
-twain ~/notes                   # browse a folder's markdown files in a sidebar
+twain ~/notes                   # browse a folder's markdown files and subfolders in a sidebar tree
 twain -g report.md              # open without stealing focus
 twain --find "Install" file.md  # open and jump to the first match
 twain --refresh                 # reload every open document from disk
