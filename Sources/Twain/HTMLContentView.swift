@@ -94,7 +94,7 @@ enum HTMLNavigationPolicy {
 /// Owns one document window's `WKWebView` and serves as its navigation/UI delegate. Lives in the
 /// view's `@State`, created on first appearance.
 @MainActor
-final class HTMLPage: NSObject, @preconcurrency WKNavigationDelegate, @preconcurrency WKUIDelegate {
+final class HTMLPage: NSObject, WKNavigationDelegate, WKUIDelegate {
     let fileURL: URL
     let webView: WKWebView
 
@@ -165,8 +165,19 @@ final class HTMLPage: NSObject, @preconcurrency WKNavigationDelegate, @preconcur
         configuration.backwards = backwards
         configuration.caseSensitive = false
         configuration.wraps = true
-        guard await webView.find(query, configuration: configuration).matchFound else { return nil }
+        guard let result = try? await webView.find(query, configuration: configuration),
+              result.matchFound
+        else { return nil }
+        // WebKit's matcher and innerText can disagree (hidden text, diacritics); never report
+        // fewer than the one match WebKit just selected.
+        let count = await countMatches(query)
+        return max(count, 1)
+    }
 
+    /// Case-insensitive occurrences of `query` in the page's visible text. Doesn't move the
+    /// selection or scroll position.
+    func countMatches(_ query: String) async -> Int {
+        guard !query.isEmpty else { return 0 }
         let count = try? await webView.callAsyncJavaScript(
             """
             const text = (document.body ? document.body.innerText : '').toLocaleLowerCase();
@@ -180,9 +191,7 @@ final class HTMLPage: NSObject, @preconcurrency WKNavigationDelegate, @preconcur
             arguments: ["query": query],
             contentWorld: .defaultClient
         )
-        // WebKit's matcher and innerText can disagree (hidden text, diacritics); never report
-        // fewer than the one match WebKit just selected.
-        return max((count as? Int) ?? 1, 1)
+        return count as? Int ?? 0
     }
 
     // MARK: Print
@@ -392,9 +401,15 @@ struct HTMLContentView: View {
         if let query = pendingFindQuery {
             pendingFindQuery = nil
             beginSearch(query: query)
-        } else if isSearching, !findQuery.isEmpty {
-            // Re-run the query against the reloaded page so the count stays current.
-            find(backwards: false, restart: true)
+        } else if isSearching, !findQuery.isEmpty, let page {
+            // Recount against the reloaded page without re-finding: a find would scroll to the
+            // first match and undo the restored scroll position.
+            let query = findQuery
+            Task {
+                let count = await page.countMatches(query)
+                guard query == findQuery else { return }
+                findCount = count > 0 ? count : nil
+            }
         }
     }
 
