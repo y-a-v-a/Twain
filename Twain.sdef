@@ -23,7 +23,7 @@
         </command>
     </suite>
 
-    <suite name="Twain Suite" code="Twai" description="Read and control the Twain Markdown viewer.">
+    <suite name="Twain Suite" code="Twai" description="Read and control the Twain Markdown and HTML viewer.">
 
         <class name="application" code="capp" description="The Twain application.">
             <cocoa class="NSApplication"/>
@@ -41,7 +41,7 @@
         </class>
 
         <class name="document" code="docu" plural="documents"
-               description="An open Markdown document window.">
+               description="An open Markdown or HTML document window.">
             <cocoa class="ScriptableDocument"/>
             <property name="name" code="pnam" type="text" access="r"
                       description="The document's display name (its file name)."/>
@@ -50,11 +50,11 @@
                 <cocoa key="path"/>
             </property>
             <property name="source text" code="Tsrc" type="text" access="r"
-                      description="The raw Markdown currently shown (follows live reloads).">
+                      description="The raw Markdown (or HTML source) currently shown (follows live reloads).">
                 <cocoa key="sourceText"/>
             </property>
             <property name="rendered text" code="Trnd" type="text" access="r"
-                      description="The document's plain text after Markdown parsing.">
+                      description="The document's plain text after Markdown parsing (for HTML, the page's visible text).">
                 <cocoa key="renderedText"/>
             </property>
             <responds-to command="refresh">

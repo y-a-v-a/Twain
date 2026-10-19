@@ -1,7 +1,7 @@
 import SwiftUI
 import TwainRendering
 
-/// A folder window: sidebar tree of the folder's subdirectories and markdown files, selected
+/// A folder window: sidebar tree of the folder's subdirectories and viewable files, selected
 /// file rendered in the detail pane. The folder URL arrives via the "folder" WindowGroup's
 /// presentation value.
 ///
@@ -34,9 +34,9 @@ struct FolderWindowView: View {
             .navigationSplitViewColumnWidth(min: 180, ideal: 220)
         } detail: {
             if let selection {
-                // A fresh ContentView per file: its search cache, file watcher, and script
-                // handle are all pinned to the URL in init, so identity must change with it.
-                ContentView(fileURL: selection, theme: theme)
+                // A fresh document view per file: its search cache (or web view), file watcher,
+                // and script handle are all pinned to the URL, so identity must change with it.
+                DocumentWindowContent(fileURL: selection, theme: theme)
                     .id(selection)
             } else {
                 placeholder
@@ -62,9 +62,9 @@ struct FolderWindowView: View {
                 )
             } else if rootEntries?.isEmpty == true {
                 ContentUnavailableView(
-                    "No Markdown Files",
+                    "No Viewable Files",
                     systemImage: "folder",
-                    description: Text("This folder has no markdown files or subfolders.")
+                    description: Text("This folder has no markdown or HTML files, or subfolders.")
                 )
             } else {
                 ContentUnavailableView(
@@ -174,8 +174,13 @@ private struct FolderTreeRows: View {
                         .selectionDisabled()
                 }
             } else {
-                Label(entry.name, systemImage: "doc.text")
-                    .tag(entry.url)
+                Label(
+                    entry.name,
+                    systemImage: entry.kind == .html
+                        ? "chevron.left.forwardslash.chevron.right"
+                        : "doc.text"
+                )
+                .tag(entry.url)
             }
         }
     }
@@ -189,7 +194,7 @@ private struct FolderTreeRows: View {
         case .some(.none):
             placeholderRow("Can't be read")
         case .some(.some(let children)) where children.isEmpty:
-            placeholderRow("No markdown files")
+            placeholderRow("No viewable files")
         case .some(.some(let children)):
             FolderTreeRows(entries: children, listings: listings, isExpanded: isExpanded)
         }

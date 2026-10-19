@@ -1,6 +1,6 @@
 # Twain
 
-A minimal, read-only Markdown viewer for macOS, built with SwiftUI and the [Textual](https://github.com/gonzalezreal/textual) library.
+A minimal, read-only Markdown viewer for macOS, built with SwiftUI and the [Textual](https://github.com/gonzalezreal/textual) library. Local `.html`/`.htm` files render in a `WKWebView` (see HTML gotchas).
 
 ## Code style
 
@@ -39,6 +39,15 @@ Do this before producing implementation code. A few sentences is fine — the go
 
 - **Every new key added to an existing `Theme` section must be an optional Codable field** with a fallback accessor (`resolvedX` / `?? default`), even when it lands in the same commit as its section. Dev builds are installed via `install.sh` against the live `~/.config/twain/theme.json`, so that file can be written by intermediate build states. A required field makes older files fail to decode, which silently reverts the app to the default theme *and* blocks `syncUserThemeFile`'s decode gate from topping the file up. Entirely new sections may use required fields internally, but the section itself must be optional on `Theme`. Add a decode-fallback test (see `listSectionWithoutItemSpacingStillDecodes` in ThemeTests.swift).
 - **Theme values wired through Textual *environment modifiers* (e.g. `.textual.listItemSpacing`) don't update on live theme reload** — Textual caches the resolved value in view `@State` and only re-resolves on a block-spacing preference change. Values wired through Textual *styles* update for free. When adding such a key, also key the `StructuredText` subtree's identity on the value (`.id(<value>)` inside the `.id("content")` used by search scrolling in ContentView.swift), and verify with a live-edit screenshot diff (launch with `TWAIN_CONFIG_DIR` pointing at a scratch config, edit the value while running, capture before/after — see Tests/screenshots/run-tests.sh for the capture pattern).
+
+## HTML gotchas
+
+- **HTML windows are a separate view, not a Textual mode.** `DocumentWindowContent` routes by `DocumentKind` (file extension) to `HTMLContentView`, used by both the `DocumentGroup` and folder windows. Theme, serif toggle, `DocumentPrinter`, and `SearchState` don't apply; refresh, live reload, find, print/export, zoom (`fontSize / 16` → `pageZoom`), `twain://`, and AppleScript are wired separately in that view. A new cross-cutting command must be wired in both views.
+- **Never navigate the window.** `HTMLNavigationPolicy` (pure, unit-tested) allows only the document's own URL in the main frame (loads, reloads, `#fragment` jumps). Clicked links open in Twain (viewable local files) or the default app. Everything else is cancelled. Don't add a back/forward history or an address bar. That's a browser, and Twain isn't one.
+- **Use `callAsyncJavaScript`, not async `evaluateJavaScript`.** The async `evaluateJavaScript` bridges its result as non-optional `Any` and fails on scripts that return `undefined`. Run helper scripts in `.defaultClient` so page globals can't interfere.
+- **`WKWebView` print output is blank unless the print operation's view gets a frame** (`operation.view?.frame = webView.bounds`). Export runs the same print operation with `jobDisposition = .save`. Don't route it through `createPDF` (one endless page) or `DocumentPrinter`.
+- **Read access is scoped to the file's folder** (`loadFileURL(_:allowingReadAccessTo:)`). Only the main file is watched: edits to a sibling CSS/JS file need Cmd+R.
+- **`Info.plist` registers `public.html` with `LSHandlerRank` `Alternate`.** Don't raise it: Twain must never become the default browser for `.html`. Quick Look stays Markdown-only, since macOS already previews HTML.
 
 ## App icon
 

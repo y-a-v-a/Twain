@@ -3,7 +3,7 @@ import Foundation
 
 /// The scripting face of one open document window, vended to Cocoa Scripting as the `document`
 /// class declared in `Twain.sdef`. A `DocumentGroup` app has no `NSDocument`, so each
-/// `ContentView` registers one of these on appear and keeps its text properties current.
+/// `ContentView` (or `HTMLContentView`) registers one of these on appear and keeps its text properties current.
 ///
 /// The Apple Event machinery calls into this class on the main thread; the `@objc` entry points
 /// are nonisolated only because actor isolation cannot be added to `NSObject` overrides, and
@@ -22,10 +22,11 @@ final class ScriptableDocument: NSObject, @unchecked Sendable {
     /// without a file. Scripting sees `missing value` for nil.
     @objc let path: String?
 
-    /// The raw Markdown currently shown — follows Cmd+R and live reloads.
+    /// The raw Markdown (or HTML source) currently shown — follows Cmd+R and live reloads.
     @objc var sourceText: String = ""
 
-    /// The plain text after Markdown parsing (the same string search runs against).
+    /// The plain text after Markdown parsing (the same string search runs against); for HTML
+    /// documents, the page's visible text once loaded.
     @objc var renderedText: String = ""
 
     /// Closes the window this document belongs to; wired to SwiftUI's `dismiss` by the view.
