@@ -1,6 +1,7 @@
 # Twain
 
-A fast, minimal Markdown viewer for macOS. Read-only — no editing, just rendering.
+A fast, minimal Markdown viewer for macOS. Read-only — no editing, just rendering. It also
+displays local HTML pages (the kind an agent builds for you) without becoming a browser.
 
 ![Twain Test Document](Twain.png)
 
@@ -31,7 +32,8 @@ Tool…** menu item installs the same CLI.) Then you can run:
 ```bash
 twain file.md
 twain a.md b.md                 # opens each in its own window
-twain ~/notes                   # browse a folder's markdown files and subfolders in a sidebar tree
+twain report.html               # view a local HTML page
+twain ~/notes                   # browse a folder's markdown/HTML files and subfolders in a sidebar tree
 twain -g report.md              # open without stealing focus
 twain --find "Install" file.md  # open and jump to the first match
 twain --refresh                 # reload every open document from disk
@@ -126,11 +128,36 @@ referenced by the document aren't shown (the extension may only read the preview
 - 🖨️ Print and PDF export with the on-screen theme: real selectable text, page breaks that
   never slice a line, code blocks wrapped for paper
 - 🪟 Multiple window support
+- 🌐 HTML pages: open local `.html`/`.htm` files (see [HTML pages](#html-pages))
 - 👀 Quick Look: select a Markdown file in Finder, press space, get Twain's rendering
 - 🔗 Scriptable via the `twain://` URL scheme and CLI — agent-friendly by design
 - 🤖 Agent skill: a harness-agnostic [skill](https://agentskills.io) (`skills/twain-markdown-viewer/`)
   that teaches coding agents to open Markdown files in Twain
 - 📜 AppleScript support: introspect and drive open documents from scripts via `osascript`
+
+## HTML pages
+
+Twain opens local `.html` and `.htm` files, for example a report, dashboard, or prototype
+an agent wrote to disk, in a WebKit view. The page keeps its own styling and scripts, and
+CDN stylesheets and scripts load as usual. What Twain adds is the same viewer behavior
+Markdown windows have:
+
+- **Live reload that keeps your place**: every write to the file re-renders it, at the same
+  scroll position.
+- **No browsing**: the window only ever shows its own file. `#anchor` links jump within the
+  page. Clicked links to other local Markdown/HTML files open in a new Twain window, and web
+  links open in your default browser. Script redirects and form submissions are ignored.
+- Find (Cmd+F), print and Export as PDF (WebKit's own pagination, honoring `@media print`),
+  and font size shortcuts (applied as page zoom). The serif toggle and theme don't apply.
+- The `twain://` commands, `--find`, `--refresh`, and AppleScript work the same way.
+  AppleScript's `rendered text` is the page's visible text.
+- Right-click → **Inspect Element** opens Web Inspector.
+- `generate-page | twain -` opens stdin as a page when it starts with `<!doctype html>` or
+  `<html>`.
+
+The page can read files in its own folder (sibling CSS, JS, images), but not above it.
+Twain registers as an *alternate* HTML handler, so your browser stays the default for
+`.html`. Use Open With or the CLI to view a page in Twain.
 
 ## Agents & Automation
 
@@ -147,7 +174,7 @@ window re-renders automatically — no integration needed. For everything else t
 | `twain://open?file=/abs/path.md` | Open a file |
 | `twain://open?file=/abs/path.md&search=text` | Open and jump to the first match of `text` |
 | `twain://open?file=/abs/path.md&activate=0` | Open without bringing Twain to the front |
-| `twain://open-folder?dir=/abs/path` | Open a folder window listing its markdown files (`&activate=0` works here too) |
+| `twain://open-folder?dir=/abs/path` | Open a folder window listing its markdown and HTML files (`&activate=0` works here too) |
 
 File paths must be absolute and query values percent-encoded:
 

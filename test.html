@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Twain HTML Test Page</title>
+<style>
+  :root { color-scheme: light dark; --accent: #c2410c; }
+  body { font: 16px/1.6 -apple-system, system-ui, sans-serif; max-width: 46rem; margin: 3rem auto; padding: 0 1.5rem; }
+  h1, h2 { line-height: 1.2; }
+  a { color: var(--accent); }
+  .card { border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0; }
+  .tall { height: 120vh; }
+  @media print { .no-print { display: none; } }
+</style>
+</head>
+<body>
+  <h1 id="top">Twain HTML Test Page</h1>
+  <p>Manual checks for HTML rendering. Edit and save this file while it's open: the window
+     reloads and keeps its scroll position.</p>
+
+  <div class="card">
+    <h2>Links</h2>
+    <ul>
+      <li><a href="#bottom">Jump to the bottom</a> (stays in this window)</li>
+      <li><a href="test.md">test.md</a> (opens in a new Twain window)</li>
+      <li><a href="https://github.com/y-a-v-a/twain">Twain on GitHub</a> (opens in the default browser)</li>
+      <li><a href="https://github.com/y-a-v-a/twain" target="_blank">Same, with target=_blank</a></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>Script</h2>
+    <p>Clicks: <strong id="count">0</strong></p>
+    <button onclick="document.getElementById('count').textContent++">Click me</button>
+    <button onclick="location.href = 'https://example.com'">Try a script redirect (ignored)</button>
+  </div>
+
+  <div class="card no-print">
+    <h2>Print</h2>
+    <p>This card is hidden when printing or exporting as PDF (<code>@media print</code>).</p>
+  </div>
+
+  <div class="tall"></div>
+  <p id="bottom">Bottom. <a href="#top">Back to top</a>.</p>
+</body>
+</html>
