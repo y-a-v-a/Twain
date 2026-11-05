@@ -104,6 +104,27 @@ done
 
 Inline specimens survive in the wild too: run `twain test.md`, mind the `--help` flag, and never trust a program that won't print its version.
 
+## Chapter V½ — In Which the Author Attempts Arithmetic
+
+A pilot's wages were $250 a month, and a cub's were $0, which is the whole of the economics I learned on the river. Those dollars are money, not mathematics, and ought to print as plain as a receipt.
+
+The schoolmaster, however, insisted on formulas. He held that the river's depth was $d_i^2 + h_{n+1}^{k}$ at any bend $i$, that $e^{i\pi} + 1 = 0$ was a fact of nature, and that $\sqrt{x^2 + y^2}$ was the shortest way home, though no raft ever took it.
+
+He wrote the larger ones on a line of their own, so the whole class could be confused at once:
+
+$$\int_0^1 x^2\,dx = \frac{1}{3}$$
+
+$$\lim_{n\to\infty}\sum_{k=1}^{n}\frac{1}{k^2}=\frac{\pi^2}{6}$$
+
+And kept his ledger in a fenced block, as a careful man keeps his accounts:
+
+```math
+A = \begin{pmatrix}1 & 2 \\ 3 & 4\end{pmatrix}, \qquad
+f(x) = \begin{cases} x^2 & x \ge 0 \\ -x & x < 0 \end{cases}
+```
+
+What he chalked inside code, `$x^2$`, he meant literally, and so should the viewer.
+
 ## Chapter VI — An Illustration, at Considerable Expense
 
 The publisher insisted on a frontispiece, claiming no book sells without one. Here it is, and I am told it cost more than the words:
