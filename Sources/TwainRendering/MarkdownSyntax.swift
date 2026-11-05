@@ -4,6 +4,6 @@ import Textual
 /// and the Quick Look preview alike, so the three renderings can't drift apart.
 ///
 /// `.math` renders `$…$` / `$$…$$` and ```` ```math ```` blocks with SwiftUIMath, whose fonts
-/// load from `swiftui-math_SwiftUIMath.bundle` via `Bundle.module` — build.sh must copy that
-/// bundle into both the app and the appex, or the first formula crashes the process.
+/// load from `swiftui-math_SwiftUIMath.bundle` — build.sh must copy that bundle into both the
+/// app and the appex, or formulas draw blank.
 public var twainSyntaxExtensions: [AttributedStringMarkdownParser.SyntaxExtension] { [.math] }

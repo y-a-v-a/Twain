@@ -47,7 +47,7 @@ cp Twain.sdef "$APP_BUNDLE/Contents/Resources/Twain.sdef"
 install -m 755 cli/twain "$APP_BUNDLE/Contents/Resources/twain"
 # Copy the Textual resource bundle (Prism.js syntax highlighting) and the SwiftUIMath bundle
 # (math fonts for Textual's `.math` extension, which Twain enables — see MarkdownSyntax.swift).
-# SwiftUIMath loads its fonts through `Bundle.module`, which traps when the bundle is missing.
+# Without the fonts, formulas draw blank.
 rm -rf "$APP_BUNDLE/Contents/Resources/"*.bundle
 cp -r "$BUILD_DIR/textual_Textual.bundle" "$APP_BUNDLE/Contents/Resources/"
 cp -r "$BUILD_DIR/swiftui-math_SwiftUIMath.bundle" "$APP_BUNDLE/Contents/Resources/"
