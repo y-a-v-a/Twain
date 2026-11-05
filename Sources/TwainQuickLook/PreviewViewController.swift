@@ -45,7 +45,7 @@ struct PreviewContent: View {
         ScrollView {
             DocumentText(
                 markdown,
-                parser: FrontMatterParser(base: AttributedStringMarkdownParser(baseURL: nil)),
+                parser: FrontMatterParser(base: AttributedStringMarkdownParser(baseURL: nil, syntaxExtensions: twainSyntaxExtensions)),
                 theme: theme
             )
                 .font(.system(size: 16))

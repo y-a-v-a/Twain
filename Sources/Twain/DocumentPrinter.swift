@@ -29,7 +29,7 @@ struct PrintMarkdownParser: MarkupParser {
     var baseURL: URL?
 
     func attributedString(for input: String) throws -> AttributedString {
-        try FrontMatterParser(base: AttributedStringMarkdownParser(baseURL: baseURL))
+        try FrontMatterParser(base: AttributedStringMarkdownParser(baseURL: baseURL, syntaxExtensions: twainSyntaxExtensions))
             .attributedString(for: input)
             .expandingTaskListMarkers(ifPresentIn: input)
     }

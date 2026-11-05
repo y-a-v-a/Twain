@@ -17,6 +17,8 @@ jobs:
         run: ./build.sh
       - name: Verify Quick Look appex
         run: Tests/quicklook/verify-bundle.sh
+      - name: Verify the app survives a formula without its build directory
+        run: Tests/quicklook/verify-math-launch.sh
 
   cli:
     name: CLI tests (Linux)
