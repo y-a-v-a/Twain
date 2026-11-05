@@ -30,6 +30,16 @@ struct FolderListingTests {
         #expect(names == ["a.md", "b.markdown", "c.mdown", "d.mkd"])
     }
 
+    @Test func listsHTMLFilesAlongsideMarkdown() throws {
+        let folder = try makeTempFolder()
+        for name in ["a.md", "b.html", "c.htm", "d.xhtml", "e.css"] {
+            try touch(name, in: folder)
+        }
+        let entries = FolderListing.entries(in: folder)
+        #expect(entries?.map(\.name) == ["a.md", "b.html", "c.htm"])
+        #expect(entries?.map(\.kind) == [.markdown, .html, .html])
+    }
+
     @Test func matchesExtensionsCaseInsensitively() throws {
         let folder = try makeTempFolder()
         try touch("README.MD", in: folder)

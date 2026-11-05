@@ -1,19 +1,21 @@
 import Foundation
 
-/// One row in a folder window's sidebar: a subdirectory or a markdown file.
+/// One row in a folder window's sidebar: a subdirectory, a markdown file, or an HTML file.
 struct FolderEntry: Hashable, Identifiable {
     let url: URL
     let isDirectory: Bool
 
     var id: URL { url }
     var name: String { url.lastPathComponent }
+    var kind: DocumentKind { DocumentKind(url: url) }
 }
 
 /// Enumerates what a folder window lists in its sidebar for a single directory level.
 enum FolderListing {
     static let markdownExtensions: Set<String> = ["md", "markdown", "mdown", "mkd"]
+    static let viewableExtensions = markdownExtensions.union(DocumentKind.htmlExtensions)
 
-    /// The subdirectories and markdown files directly inside `folder`: directories first, then
+    /// The subdirectories and viewable (markdown or HTML) files directly inside `folder`: directories first, then
     /// files, each sorted by name. Returns nil when the folder is missing or unreadable so
     /// callers can distinguish "empty" from "gone".
     ///
@@ -37,7 +39,7 @@ enum FolderListing {
                     directories.append(FolderEntry(url: url, isDirectory: true))
                 }
             } else if values.isRegularFile == true,
-                      markdownExtensions.contains(url.pathExtension.lowercased()) {
+                      viewableExtensions.contains(url.pathExtension.lowercased()) {
                 files.append(FolderEntry(url: url, isDirectory: false))
             }
         }

@@ -5,7 +5,21 @@ extension UTType {
     static let markdown = UTType(importedAs: "net.daringfireball.markdown")
 }
 
-/// Shared text decoding for markdown files: UTF-8 first, then the fallbacks that cover
+/// How a file is rendered: Markdown through Textual, or HTML in a web view. Decided by file
+/// extension so the document window, the folder sidebar, and link handling all agree.
+enum DocumentKind: Equatable {
+    case markdown
+    case html
+
+    static let htmlExtensions: Set<String> = ["html", "htm"]
+
+    init(url: URL?) {
+        let ext = url?.pathExtension.lowercased() ?? ""
+        self = Self.htmlExtensions.contains(ext) ? .html : .markdown
+    }
+}
+
+/// Shared text decoding for markdown (and HTML source) files: UTF-8 first, then the fallbacks that cover
 /// BOM-carrying and legacy files.
 enum MarkdownText {
     static func decode(_ data: Data) -> String? {
@@ -21,7 +35,7 @@ enum MarkdownText {
 }
 
 struct MarkdownDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.markdown, .plainText] }
+    static var readableContentTypes: [UTType] { [.markdown, .plainText, .html] }
 
     var text: String
 

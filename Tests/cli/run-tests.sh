@@ -186,6 +186,37 @@ else
 fi
 rm -f "$STDIN_FILE"
 
+# Prints the temp file a `twain -` run opened, from the first open log line.
+stdin_file() {
+    local line
+    line=$(head -1 "$WORK/open.log")
+    printf '%s' "${line#"OPEN: -a $APP_PATH "}"
+}
+
+printf '\n  <!DOCTYPE html>\n<html><body>hi</body></html>\n' | run_cli -
+STDIN_FILE=$(stdin_file)
+case "$STDIN_FILE" in
+    *.html) ok "stdin HTML document lands in a .html temp file" ;;
+    *)      fail "stdin HTML document lands in a .html temp file" "opened: $STDIN_FILE" ;;
+esac
+rm -f "$STDIN_FILE"
+
+printf '<HTML lang="en"><p>x</p></HTML>\n' | run_cli -
+STDIN_FILE=$(stdin_file)
+case "$STDIN_FILE" in
+    *.html) ok "stdin <html> sniffing is case-insensitive" ;;
+    *)      fail "stdin <html> sniffing is case-insensitive" "opened: $STDIN_FILE" ;;
+esac
+rm -f "$STDIN_FILE"
+
+printf '# Title\n\n<div>inline html</div>\n' | run_cli -
+STDIN_FILE=$(stdin_file)
+case "$STDIN_FILE" in
+    *.md) ok "stdin Markdown with inline HTML stays Markdown" ;;
+    *)    fail "stdin Markdown with inline HTML stays Markdown" "opened: $STDIN_FILE" ;;
+esac
+rm -f "$STDIN_FILE"
+
 # --- Errors ------------------------------------------------------------------
 
 : > "$WORK/open.log"

@@ -53,6 +53,25 @@
             <key>CFBundleTypeName</key>
             <string>Markdown Document</string>
         </dict>
+        <dict>
+            <!-- Alternate: Twain can open HTML (Open With, the CLI, folder windows) but never
+                 claims to be the default handler, so browsers keep owning .html. -->
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSHandlerRank</key>
+            <string>Alternate</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.html</string>
+            </array>
+            <key>CFBundleTypeExtensions</key>
+            <array>
+                <string>html</string>
+                <string>htm</string>
+            </array>
+            <key>CFBundleTypeName</key>
+            <string>HTML Document</string>
+        </dict>
     </array>
     <key>UTImportedTypeDeclarations</key>
     <array>

@@ -636,15 +636,47 @@ final class SearchState {
 
 struct SearchBar: View {
     @Bindable var searchState: SearchState
-    @FocusState private var isFieldFocused: Bool
     var onDismiss: () -> Void
 
-    private var queryBinding: Binding<String> {
-        Binding(
-            get: { searchState.query },
-            set: { searchState.updateQuery($0) }
+    var body: some View {
+        FindBar(
+            query: Binding(
+                get: { searchState.query },
+                set: { searchState.updateQuery($0) }
+            ),
+            status: searchState.query.isEmpty ? nil : matchLabel,
+            canNavigate: searchState.hasMatches,
+            onNext: { searchState.nextMatch() },
+            onPrevious: { searchState.previousMatch() },
+            onDismiss: onDismiss
         )
     }
+
+    private var matchLabel: String {
+        // The count reflects `matches`; the highlighter skips any match that no longer fits the
+        // freshly parsed document (see HighlightingMarkdownParser). During the brief window after
+        // a cmd-R refresh while searching — new document parsed, query not yet re-run — the count
+        // here can momentarily exceed the highlights drawn. It self-corrects on the next render
+        // once SearchState re-runs the query against the new document.
+        if searchState.matches.isEmpty {
+            return "No matches"
+        }
+
+        return "\(searchState.currentMatchIndex + 1) of \(searchState.matchCount)"
+    }
+}
+
+/// The find bar's look and key handling, independent of how matches are found: Markdown
+/// windows drive it from `SearchState`, HTML windows from WebKit's find.
+struct FindBar: View {
+    @Binding var query: String
+    /// Shown right of the field (e.g. "2 of 5", "No matches"); nil hides it.
+    var status: String?
+    var canNavigate: Bool
+    var onNext: () -> Void
+    var onPrevious: () -> Void
+    var onDismiss: () -> Void
+    @FocusState private var isFieldFocused: Bool
 
     var body: some View {
         HStack(spacing: 8) {
@@ -653,7 +685,7 @@ struct SearchBar: View {
                     .foregroundStyle(.secondary)
                     .font(.system(size: 12))
 
-                TextField("Search…", text: queryBinding)
+                TextField("Search…", text: $query)
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
                     .focused($isFieldFocused)
@@ -667,13 +699,13 @@ struct SearchBar: View {
                         else {
                             return .ignored
                         }
-                        searchState.previousMatch()
+                        onPrevious()
                         return .handled
                     }
-                    .onSubmit { searchState.nextMatch() }
+                    .onSubmit { onNext() }
 
-                if !searchState.query.isEmpty {
-                    Text(matchLabel)
+                if let status {
+                    Text(status)
                         .foregroundStyle(.secondary)
                         .font(.system(size: 11))
                         .monospacedDigit()
@@ -689,19 +721,19 @@ struct SearchBar: View {
                     .strokeBorder(.quaternary, lineWidth: 0.5)
             )
 
-            Button(action: { searchState.previousMatch() }) {
+            Button(action: onPrevious) {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 11, weight: .medium))
             }
             .buttonStyle(.borderless)
-            .disabled(!searchState.hasMatches)
+            .disabled(!canNavigate)
 
-            Button(action: { searchState.nextMatch() }) {
+            Button(action: onNext) {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11, weight: .medium))
             }
             .buttonStyle(.borderless)
-            .disabled(!searchState.hasMatches)
+            .disabled(!canNavigate)
 
             Button("", systemImage: "xmark", action: onDismiss)
                 .buttonStyle(.borderless)
@@ -712,18 +744,5 @@ struct SearchBar: View {
         .padding(.vertical, 8)
         .background(.bar)
         .onAppear { isFieldFocused = true }
-    }
-
-    private var matchLabel: String {
-        // The count reflects `matches`; the highlighter skips any match that no longer fits the
-        // freshly parsed document (see HighlightingMarkdownParser). During the brief window after
-        // a cmd-R refresh while searching — new document parsed, query not yet re-run — the count
-        // here can momentarily exceed the highlights drawn. It self-corrects on the next render
-        // once SearchState re-runs the query against the new document.
-        if searchState.matches.isEmpty {
-            return "No matches"
-        }
-
-        return "\(searchState.currentMatchIndex + 1) of \(searchState.matchCount)"
     }
 }

@@ -64,7 +64,7 @@ struct TwainApp: App {
 
     var body: some Scene {
         DocumentGroup(viewing: MarkdownDocument.self) { file in
-            ContentView(document: file.document, fileURL: file.fileURL, theme: themeStore.theme)
+            DocumentWindowContent(document: file.document, fileURL: file.fileURL, theme: themeStore.theme)
         }
         .commands {
             InstallCLICommands()
