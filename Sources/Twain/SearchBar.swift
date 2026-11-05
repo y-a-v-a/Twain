@@ -12,7 +12,7 @@ final class HighlightingMarkdownCache {
     private let baseParser: FrontMatterParser<AttributedStringMarkdownParser>
 
     init(baseURL: URL? = nil) {
-        baseParser = FrontMatterParser(base: AttributedStringMarkdownParser(baseURL: baseURL))
+        baseParser = FrontMatterParser(base: AttributedStringMarkdownParser(baseURL: baseURL, syntaxExtensions: twainSyntaxExtensions))
     }
 
     private(set) var markdown: String = ""

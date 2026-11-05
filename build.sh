@@ -45,11 +45,12 @@ cp Twain.sdef "$APP_BUNDLE/Contents/Resources/Twain.sdef"
 # The `twain` CLI ships in the bundle so the app's "Install Command Line Tool…"
 # menu item can copy it to ~/.bin without a source checkout.
 install -m 755 cli/twain "$APP_BUNDLE/Contents/Resources/twain"
-# Copy the Textual resource bundle so Prism.js syntax highlighting works. Deliberately NOT
-# the SwiftUIMath bundle (7MB of math fonts): Twain never enables Textual's `.math` syntax
-# extension, so those resources are unreachable. Restore it if math support is ever enabled.
+# Copy the Textual resource bundle (Prism.js syntax highlighting) and the SwiftUIMath bundle
+# (math fonts for Textual's `.math` extension, which Twain enables — see MarkdownSyntax.swift).
+# SwiftUIMath loads its fonts through `Bundle.module`, which traps when the bundle is missing.
 rm -rf "$APP_BUNDLE/Contents/Resources/"*.bundle
 cp -r "$BUILD_DIR/textual_Textual.bundle" "$APP_BUNDLE/Contents/Resources/"
+cp -r "$BUILD_DIR/swiftui-math_SwiftUIMath.bundle" "$APP_BUNDLE/Contents/Resources/"
 
 # Quick Look preview extension: hand-assembled appex (SPM can't build .appex
 # targets). The binary's entry point is NSExtensionMain, set at link time in
@@ -60,10 +61,10 @@ rm -rf "$APPEX"
 mkdir -p "$APPEX/Contents/MacOS" "$APPEX/Contents/Resources"
 cp "$BUILD_DIR/TwainQuickLook" "$APPEX/Contents/MacOS/TwainQuickLook"
 cp quicklook/Info.plist "$APPEX/Contents/Info.plist"
-# The appex is its own main bundle, so it needs its own copy of the Textual
-# resource bundle (Prism.js for code highlighting). SwiftUIMath is skipped
-# here for the same reason as in the app above.
+# The appex is its own main bundle, so it needs its own copies of both resource
+# bundles (Prism.js for code highlighting, math fonts for formulas).
 cp -r "$BUILD_DIR/textual_Textual.bundle" "$APPEX/Contents/Resources/"
+cp -r "$BUILD_DIR/swiftui-math_SwiftUIMath.bundle" "$APPEX/Contents/Resources/"
 
 # Release binaries ship without local symbols (~3MB of symbol/string tables across the two
 # executables). External symbols and Swift metadata survive, so extension loading and the
