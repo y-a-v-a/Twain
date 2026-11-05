@@ -38,14 +38,20 @@ struct DocumentWindowContent: View {
 
 /// Twain shows one local HTML file per window; it is not a browser. The only main-frame load
 /// allowed is the document itself (initial load, reloads, `#fragment` jumps). Clicked links leave
-/// the window: viewable local files open in Twain, everything else in its default app. Script
-/// redirects, form submissions, and other non-user navigations are dropped.
+/// the window: viewable local files open in Twain, other local files are revealed in Finder, and
+/// web links go to their default app. Script redirects, form submissions, and other non-user
+/// navigations are dropped.
+///
+/// Local files are never opened in another app: WebKit reports a scripted `a.click()` as
+/// `linkActivated`, so `isUserLink` can't prove a person clicked, and opening a `.command` or
+/// `.app` would run it.
 ///
 /// Pure logic, separated from the WebKit delegate so it can be unit tested.
 enum HTMLNavigationPolicy {
     enum Decision: Equatable {
         case allow
         case openInTwain(URL)
+        case revealInFinder(URL)
         case openExternally(URL)
         case cancel
     }
@@ -77,7 +83,7 @@ enum HTMLNavigationPolicy {
             let ext = url.pathExtension.lowercased()
             return FolderListing.viewableExtensions.contains(ext)
                 ? .openInTwain(url)
-                : .openExternally(url)
+                : .revealInFinder(url)
         }
         return externalSchemes.contains(scheme) ? .openExternally(url) : .cancel
     }
@@ -265,6 +271,9 @@ final class HTMLPage: NSObject, WKNavigationDelegate, WKUIDelegate {
                 withApplicationAt: Bundle.main.bundleURL,
                 configuration: NSWorkspace.OpenConfiguration()
             )
+        case .revealInFinder(let url):
+            // Rebuilt from the path: a link's `#fragment` or `?query` isn't part of the file.
+            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: url.path)])
         case .openExternally(let url):
             NSWorkspace.shared.open(url)
         }

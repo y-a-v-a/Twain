@@ -52,9 +52,17 @@ struct HTMLDocumentTests {
         #expect(decide(notes.absoluteString) == .openInTwain(notes))
     }
 
-    @Test func clickedOtherLocalFilesOpenExternally() {
-        let pdf = URL(string: "file:///tmp/site/report.pdf")!
-        #expect(decide(pdf.absoluteString) == .openExternally(pdf))
+    /// A scripted `a.click()` also arrives as a user link, so no local file may reach an app that
+    /// would open or run it.
+    @Test(arguments: ["report.pdf", "run.command", "Tool.app", "install.sh", "no-extension"])
+    func clickedOtherLocalFilesAreOnlyRevealed(name: String) {
+        let file = URL(string: "file:///tmp/site/\(name)")!
+        #expect(decide(file.absoluteString) == .revealInFinder(file))
+    }
+
+    @Test func extensionCaseCannotDodgeTheReveal() {
+        let file = URL(string: "file:///tmp/site/RUN.COMMAND")!
+        #expect(decide(file.absoluteString) == .revealInFinder(file))
     }
 
     @Test func nonUserMainFrameNavigationsAreCancelled() {
