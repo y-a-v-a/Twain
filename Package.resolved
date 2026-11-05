@@ -1,5 +1,5 @@
 {
-  "originHash" : "0de2726cc835c14ef7d6d5055ee3cdfbb39559b824dd420b9e6c2b970709be8d",
+  "originHash" : "b90106452521fb42657fd402e4f465738c0b2ed9827e99c74114379efc7c9b10",
   "pins" : [
     {
       "identity" : "swift-concurrency-extras",
@@ -24,8 +24,7 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/y-a-v-a/textual",
       "state" : {
-        "branch" : "main",
-        "revision" : "32435760ea82a5759791c147edb72e1eb1a85b9c"
+        "revision" : "db544a1773bbd55068be6e850f690b662816a650"
       }
     }
   ],
